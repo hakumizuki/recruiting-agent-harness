@@ -104,6 +104,12 @@ class H(BaseHTTPRequestHandler):
                         "events": [{k: e[k] for k in ("id", "channel", "btn", "from")} for e in SCENE_EVENTS[lang][day]],
                         "rules": [{**r, "label": harness.CATEGORIES[r["category"]][lang]}
                                   for r in MEMORY.get(lang, {"rules": {}})["rules"].values()]})
+        elif u.path == "/api/graph":  # Neo4j に入っている承認済みメッセージと概念
+            try:
+                from graph_search import GraphSearch
+                self._json({"ok": True, "rows": GraphSearch().graph(ns=lang)})
+            except Exception as e:
+                self._json({"ok": False, "error": repr(e)[:200], "rows": []})
         elif u.path == "/api/stream":
             st = SESSIONS.get(q.get("session", [""])[0])
             if not st:
@@ -136,8 +142,22 @@ class H(BaseHTTPRequestHandler):
                               g("step", "0") == "1", g("skip_reads", "1") == "1", day if day in ("d1", "d7") else "")
             return self._json({"session": sid})
         if u.path == "/api/memory-reset":
-            MEMORY.pop("en" if g("lang") == "en" else "ja", None)
+            lang = "en" if g("lang") == "en" else "ja"
+            MEMORY.pop(lang, None)
+            try:  # Neo4j に入れた承認済みメッセージも消す
+                from graph_search import GraphSearch
+                GraphSearch().reset(ns=lang)
+            except Exception:
+                pass
             return self._json({"ok": True})
+        if u.path == "/api/scale":  # 100万件のシミュレーション（LLM は呼ばない）
+            import scale_sim
+            res = {k: scale_sim.run(k) for k in ("naive", "rulebook")}
+            out = {k: {x: v[x] for x in ("auto", "review", "wrong_auto")} for k, v in res.items()}
+            out["history"] = [{"category": c, "t": t or 0, "state": st_, "why": why}
+                              for c, r in res["rulebook"]["book"].rules.items() for t, st_, why in r.history]
+            out["n"] = scale_sim.N
+            return self._json(out)
         st = SESSIONS.get(g("session"))
         if not st:
             return self._json({"error": "no session"}, 404)

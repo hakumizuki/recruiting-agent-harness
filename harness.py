@@ -450,11 +450,16 @@ CLASSIFY_SYSTEM = {
           + '\nOutput JSON only: {"category": "<category key>"}',
 }
 
+GRAPH_MIN_SCORE = 0.6  # Neo4j で「似ている」とみなす下限
+
 LS = {
-    "ja": {"r_learned": "覚えたルール #{n}「{cat}」（{day}に担当者が承認）", "r_new": "初めての種類の返信は人が確認（承認するとルールを覚えます）",
+    "ja": {"r_graph": "Neo4j: 承認済みの「{text}」と似ている（{score:.2f}）→ ルール #{n}",
+           "g_none": "Neo4j: 似た承認済みメッセージなし → 人が確認","r_learned": "覚えたルール #{n}「{cat}」（{day}に担当者が承認）", "r_new": "初めての種類の返信は人が確認（承認するとルールを覚えます）",
            "learned": "ルールを覚えました #{n}: 「{cat}」への返信は、兆候がなければ次から自動で送る", "cls": "種類の判定",
            "d_csys": "分類への指示", "d_craw": "分類モデルの生の出力"},
-    "en": {"r_learned": "Learned rule #{n}: “{cat}” (approved by recruiter on {day})", "r_new": "First reply of this kind needs a human (approving it teaches a rule)",
+    "en": {"r_graph": "Neo4j: similar to approved “{text}” ({score:.2f}) → rule #{n}",
+           "g_none": "Neo4j: no similar approved message → human review",
+           "r_learned": "Learned rule #{n}: “{cat}” (approved by recruiter on {day})", "r_new": "First reply of this kind needs a human (approving it teaches a rule)",
            "learned": "Learned rule #{n}: replies to “{cat}” will be sent automatically next time, if there are no warning signs", "cls": "Message type",
            "d_csys": "Classifier instructions", "d_craw": "Classifier raw output"},
 }
@@ -507,6 +512,24 @@ class LearnSession(Session):
         self.system = scene_system_prompt(lang, day)
         self.tools = [t for t in tools(lang) if t["name"] in ("get_candidate", "send_line", "escalate", "finish")]
         self.cat_cache: dict[str, str] = {}
+        try:  # Neo4j がなければ、決め打ちの種類で判定する（予備）
+            from graph_search import GraphSearch
+            self.graph = GraphSearch()
+            self.graph.db.verify_connectivity()
+        except Exception:
+            self.graph = None
+
+    def graph_lookup(self, cid: str) -> dict | None:
+        """Neo4j の概念グラフで、過去に承認された似たメッセージを探す"""
+        from graph_search import concepts
+        text = self.world.latest_line(cid)
+        qc = concepts(text)
+        _, rows = self.graph.search(text, 1, ns=self.lang, qc=qc)
+        hit = rows[0] if rows and rows[0]["score"] >= GRAPH_MIN_SCORE else None
+        self.emit({"type": "graph", "candidate": self.world.name(cid), "concepts": qc,
+                   "hit": ({k: hit[k] for k in ("text", "score", "shared", "rule")} if hit else None),
+                   "detail": {"query concepts": qc, "top matches": rows}})
+        return hit
 
     def category_of(self, cid: str) -> str:
         if cid not in self.cat_cache:
@@ -526,7 +549,14 @@ class LearnSession(Session):
         decision, why = super().policy(name, args)
         # 自由文の返信で、ガードを通ったものだけ、覚えたルールを当てる
         if self.on and name == "send_line" and decision == "queue":
-            cat = self.category_of(args.get("candidate_id", ""))
+            cid = args.get("candidate_id", "")
+            if self.graph is not None:
+                hit = self.graph_lookup(cid)
+                rule = self.memory["rules"].get(hit["rule"]) if hit else None
+                if rule:
+                    return "auto", LS[self.lang]["r_graph"].format(text=hit["text"][:24], score=hit["score"], n=rule["n"])
+                return "queue", LS[self.lang]["r_new"]
+            cat = self.category_of(cid)
             rule = self.memory["rules"].get(cat)
             if rule and cat != "other":
                 return "auto", LS[self.lang]["r_learned"].format(n=rule["n"], cat=CATEGORIES[cat][self.lang], day=rule["day"])
@@ -540,7 +570,12 @@ class LearnSession(Session):
             return
         cid = p["candidate_id"]
         cat = self.cat_cache.get(cid) or self.category_of(cid)
-        if cat == "other" or cat in self.memory["rules"]:
+        if cat == "other":
+            return
+        if self.graph is not None:  # 承認されたメッセージを Neo4j の概念グラフに入れる
+            cs = self.graph.add(f"{self.lang}-{pid}-{cid}", self.world.latest_line(cid), label=CATEGORIES[cat][self.lang], ns=self.lang, rule=cat)
+            self.emit({"type": "graph_add", "candidate": self.world.name(cid), "text": self.world.latest_line(cid), "concepts": cs})
+        if cat in self.memory["rules"]:
             return
         n = len(self.memory["rules"]) + 1
         rule = {"n": n, "category": cat, "day": SCENE_DATE[self.lang][self.day].split(" ")[0],

@@ -48,7 +48,7 @@ ai& has no embeddings endpoint, so `graph_search.py` measures meaning with a **c
 2. Messages and concepts go into Neo4j as `(:Message)-[:ABOUT]->(:Concept)`
 3. A query's concepts are matched by graph traversal, weighted by IDF (common concepts count less)
 
-Japanese messages indexed, English questions one week later: *"Should I wear a suit to the social?"* → top hit *「懇親会って私服で大丈夫ですか？」* (score 1.00); *"what time and where…?"* → *「何時にどこに集合…？」* (1.00). This lets a learned rule attach to "similar approved messages" instead of a fixed list of categories.
+Japanese messages indexed, English questions one week later: *"Should I wear a suit to the social?"* → top hit *「懇親会って私服で大丈夫ですか？」* (score 1.00); *"what time and where…?"* → *「何時にどこに集合…？」* (1.00). In the learning scene, every approved message is saved to Neo4j, and a new message is auto-sent only if Neo4j finds a similar approved message (score ≥ 0.6) whose rule is learned — so a rule attaches to "similar approved messages" instead of a fixed list of categories. Without Neo4j, the scene falls back to a fixed category classifier.
 
 ```bash
 docker run -d --name harness-neo4j -p 127.0.0.1:7687:7687 -e NEO4J_AUTH=neo4j/<password> neo4j:5
@@ -65,7 +65,7 @@ cp .env.example .env   # put your ai& API key in AIAND_API_KEY
 .venv/bin/python server.py
 ```
 
-- http://localhost:8765/demo#en — guided demo (press Space to advance)
+- http://localhost:8765/demo#en — guided demo (press Space to advance; the last step runs the 1M-message simulation live and shows the Neo4j graph)
 - http://localhost:8765/scene#en — learning scene (Day 1 → one week later)
 - http://localhost:8765/#en — day simulator (LINE / email / Teams messages arrive on button press)
 

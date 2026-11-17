@@ -53,35 +53,44 @@ class GraphSearch:
             s.run("CREATE CONSTRAINT msg_id IF NOT EXISTS FOR (m:Message) REQUIRE m.id IS UNIQUE")
             s.run("CREATE CONSTRAINT concept_name IF NOT EXISTS FOR (c:Concept) REQUIRE c.name IS UNIQUE")
 
-    def reset(self) -> None:
+    def reset(self, ns: str | None = None) -> None:
+        """ns を指定するとその名前空間のメッセージだけ消す（None なら全部）"""
         with self.db.session() as s:
-            s.run("MATCH (n) DETACH DELETE n")
+            if ns is None:
+                s.run("MATCH (n) DETACH DELETE n")
+            else:
+                s.run("MATCH (m:Message {ns: $ns}) DETACH DELETE m", ns=ns)
 
-    def add(self, mid: str, text: str, label: str = "", cs: list[str] | None = None) -> list[str]:
+    def add(self, mid: str, text: str, label: str = "", cs: list[str] | None = None, ns: str = "", rule: str = "") -> list[str]:
         cs = cs if cs is not None else concepts(text)
         with self.db.session() as s:
-            s.run("""MERGE (m:Message {id: $id}) SET m.text = $text, m.label = $label
+            s.run("""MERGE (m:Message {id: $id}) SET m.text = $text, m.label = $label, m.ns = $ns, m.rule = $rule
                      WITH m UNWIND $cs AS name
-                     MERGE (c:Concept {name: name}) MERGE (m)-[:ABOUT]->(c)""", id=mid, text=text, label=label, cs=cs)
+                     MERGE (c:Concept {name: name}) MERGE (m)-[:ABOUT]->(c)""", id=mid, text=text, label=label, cs=cs, ns=ns, rule=rule)
         return cs
 
-    def search(self, text: str, k: int = 3) -> tuple[list[str], list[dict]]:
-        qc = concepts(text)
+    def graph(self, ns: str = "") -> list[dict]:
+        with self.db.session() as s:
+            return s.run("""MATCH (m:Message {ns: $ns})-[:ABOUT]->(c:Concept)
+                            RETURN m.id AS id, m.text AS text, m.rule AS rule, collect(c.name) AS concepts""", ns=ns).data()
+
+    def search(self, text: str, k: int = 3, ns: str = "", qc: list[str] | None = None) -> tuple[list[str], list[dict]]:
+        qc = qc if qc is not None else concepts(text)
         with self.db.session() as s:
             rows = s.run("""
-                MATCH (mm:Message) WITH count(mm) AS N
+                MATCH (mm:Message {ns: $ns}) WITH count(mm) AS N
                 UNWIND $qc AS name
-                OPTIONAL MATCH (c:Concept {name: name})<-[:ABOUT]-(x:Message)
+                OPTIONAL MATCH (c:Concept {name: name})<-[:ABOUT]-(x:Message {ns: $ns})
                 WITH N, name, count(x) AS df
                 WITH N, name, log(1.0 + toFloat(N) / (1 + df)) AS idf
                 WITH N, collect({name: name, idf: idf}) AS q, sum(idf) AS qtotal
                 UNWIND q AS qi
-                MATCH (c:Concept {name: qi.name})<-[:ABOUT]-(m:Message)
+                MATCH (c:Concept {name: qi.name})<-[:ABOUT]-(m:Message {ns: $ns})
                 WITH m, qtotal, sum(qi.idf) AS hit, collect(qi.name) AS shared
                 WITH m, shared, hit / qtotal AS score, COUNT { (m)-[:ABOUT]->() } AS dsize
                 // 同点なら、余計な話題（問い合わせにない概念）が少ないメッセージを上にする
-                RETURN m.id AS id, m.text AS text, m.label AS label, shared, score, dsize
-                ORDER BY score DESC, dsize ASC LIMIT $k""", qc=qc, k=k).data()
+                RETURN m.id AS id, m.text AS text, m.label AS label, m.rule AS rule, shared, score, dsize
+                ORDER BY score DESC, dsize ASC LIMIT $k""", qc=qc, k=k, ns=ns).data()
         return qc, rows
 
 

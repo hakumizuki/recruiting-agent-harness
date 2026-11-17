@@ -69,6 +69,7 @@ let lang = location.hash === "#ja" ? "ja" : "en";
 const $ = (id) => document.getElementById(id);
 const doc = () => $("app").contentDocument;
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 // ---------- 本体の画面を操作する小道具（本体のコードには触れない）
 const click = (sel) => { const el = doc().querySelector(sel); if (el) el.click(); return !!el; };
@@ -110,7 +111,7 @@ const STEPS = {
       say: "Approving teaches it: <b>“replies about dress code” and “replies about time and place” can go out on their own next time.</b>",
       run: async () => { await approveAll(); } },
     { title: "One week later: the same kinds of questions arrive.",
-      say: "Different students, different wording. <b>Sent automatically</b> — and the reason shows which rule the recruiter approved.",
+      say: "Different students, different wording. <b>Neo4j</b> finds the most similar approved message in its concept graph, so the rule applies — <b>sent automatically</b>.",
       run: async () => { await ensure("btn-d7"); await sendMsg(0); await sendMsg(1); } },
     { title: "But a hesitating student still goes to a human.",
       say: "Hina asks where the social is <b>and</b> says she's waiting on another company. Learned rules never override the guard.",
@@ -118,6 +119,9 @@ const STEPS = {
     { title: "Day 1 vs. one week later — same model the whole time.",
       say: "Human review went down, automatic replies went up, and risky messages were stopped every time. <b>The harness decides what the agent may do alone — and it grows with your approvals.</b>",
       run: async () => {} },
+    { title: "Now scale it to 1,000,000 messages.", overlay: true,
+      say: "Learning from a single approval spreads mistakes. The harness promotes and demotes rules <b>by statistics</b>, and <b>Neo4j</b> matches new messages to approved ones <b>by meaning</b>.",
+      run: async () => { await renderScale(); } },
   ],
   ja: [
     { title: "モデルは同じ安いモデル。変えるのはハーネスだけ。",
@@ -139,7 +143,7 @@ const STEPS = {
       say: "<b>「服装・持ち物の質問への返信」「日時・集合場所の質問への返信」は、次から自動で送ってよい</b>と学習します。",
       run: async () => { await approveAll(); } },
     { title: "1週間後：同じ種類の質問が届きます。",
-      say: "別の学生、別の言い回し。<b>自動で送信</b>され、理由にはどの承認から覚えたルールかが表示されます。",
+      say: "別の学生、別の言い回し。<b>Neo4j</b> の概念グラフから、承認済みの似たメッセージを見つけてルールを当てはめ、<b>自動で送信</b>します。",
       run: async () => { await ensure("btn-d7"); await sendMsg(0); await sendMsg(1); } },
     { title: "それでも、迷っている学生は人へ。",
       say: "小林さんは集合場所を聞きつつ、<b>他社の結果待ち</b>だと書いています。覚えたルールがガードより優先されることはありません。",
@@ -147,6 +151,9 @@ const STEPS = {
     { title: "初日と1週間後の比較。モデルは最後まで同じです。",
       say: "人の確認は減り、自動の返信は増え、危ないメッセージは毎回止まりました。<b>エージェントに何を任せるかはハーネスが決め、承認とともに育ちます。</b>",
       run: async () => {} },
+    { title: "100万件に増やしてみます。", overlay: true,
+      say: "承認1回で覚える方式では、間違いが広がります。ハーネスは<b>統計で</b>ルールを昇格・降格させ、<b>Neo4j</b> が新しいメッセージを承認済みのものと<b>意味で</b>照らし合わせます。",
+      run: async () => { await renderScale(); } },
   ],
 };
 
@@ -224,6 +231,43 @@ const INTRO = {
     </div>`,
 };
 
+// ---------- 大量データのステップ（その場で100万件を流し、Neo4j のグラフを読む）
+const SC = {
+  en: { h: "Learning that holds up at 1,000,000 messages", a: "Rule book vs. learning from one approval", wrong: "wrong auto-replies",
+        naive: "Learn from 1 approval", book: "Harness rule book", tl: "What the rule book did", venue: "Event venue changes at #600,000 — the agent keeps giving the old answer",
+        neoH: "Neo4j: finding the right rule by meaning", neoP: "Every approved message is stored as a concept graph. A new message is turned into concepts and matched by graph traversal, so one approval covers many different wordings — and languages — without a fixed category list.",
+        neoNow: "In Neo4j right now (approved messages → concepts):", empty: "Nothing yet — run the demo steps first.", auto: "auto", review: "human review",
+        st: { auto: "auto", suspended: "suspended", learning: "back to learning" } },
+  ja: { h: "100万件でも崩れない学習", a: "承認1回で覚える方式との比較", wrong: "間違った自動返信",
+        naive: "承認1回で覚える", book: "ハーネスのルール帳", tl: "ルール帳がしたこと", venue: "60万件目で懇親会の会場が変わる（エージェントは古い答えを返し続ける）",
+        neoH: "Neo4j：意味でルールを見つける", neoP: "承認されたメッセージはすべて概念グラフとして保存されます。新しいメッセージは概念に変換され、グラフを辿って照らし合わされるので、1回の承認が、言い回しや言語の違う多くの質問をカバーします。決め打ちの分類はいりません。",
+        neoNow: "いま Neo4j に入っているもの（承認済みメッセージ → 概念）:", empty: "まだありません。先にデモのステップを進めてください。", auto: "自動", review: "人の確認",
+        st: { auto: "自動化", suspended: "停止", learning: "学び直し" } },
+};
+async function renderScale() {
+  const L = SC[lang];
+  $("intro-body").innerHTML = `<h2>${L.h}</h2><p class="lead">${lang === "en" ? "Running 1,000,000 synthetic messages now…" : "いま100万件の合成メッセージを流しています…"}</p>`;
+  $("intro").hidden = false;
+  const [sim, g] = await Promise.all([fetch("/api/scale", { method: "POST" }).then(r => r.json()), fetch(`/api/graph?lang=${lang}`).then(r => r.json())]);
+  const pct = (k) => sim[k].wrong_auto / sim[k].auto * 100;
+  const bar = (k, label, color) => `<div style="display:grid;gap:4px"><div style="display:flex;justify-content:space-between;font-size:14px"><b>${label}</b><span><b style="font-size:22px">${pct(k).toFixed(1)}%</b> ${L.wrong}</span></div>
+    <div style="height:14px;background:#eef0f3;border-radius:7px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100, pct(k) * 4)}%;background:${color}"></i></div>
+    <div style="font-size:12px;color:var(--muted)">${L.auto} ${sim[k].auto.toLocaleString()} · ${L.review} ${sim[k].review.toLocaleString()} · ${L.wrong} ${sim[k].wrong_auto.toLocaleString()}</div></div>`;
+  const tl = sim.history.sort((a, b) => a.t - b.t).map(h => `<li><b>#${h.t.toLocaleString()}</b> ${esc(h.category)} → <b>${L.st[h.state] || h.state}</b> <span style="color:var(--muted)">${esc(h.why)}</span></li>`).join("");
+  const rows = (g.rows || []).map(r => `<li><span style="color:var(--muted)">“${esc(r.text.slice(0, 40))}…”</span><div class="tech" style="margin-top:3px">${r.concepts.map(c => `<span style="background:#dff0ff;border-color:#bfe0ff;color:#0b5cad">${esc(c)}</span>`).join("")}</div></li>`).join("");
+  $("intro-body").innerHTML = `
+    <h2>${L.h}</h2>
+    <div class="cards" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <div class="card"><div class="k">${sim.n.toLocaleString()} messages</div><h3>${L.a}</h3>
+        ${bar("naive", L.naive, "#c62f2f")}${bar("rulebook", L.book, "#17845a")}
+        <p style="font-size:13px;color:var(--muted)">${L.venue}</p>
+        <div class="k" style="margin-top:4px">${L.tl}</div><ul style="font-size:13px">${tl}</ul></div>
+      <div class="card"><div class="k">Neo4j</div><h3>${L.neoH}</h3><p>${L.neoP}</p>
+        <div class="flow"><span>message</span><i>→</i><span>concepts</span><i>→</i><span>(:Message)-[:ABOUT]->(:Concept)</span><i>→</i><span>similar approved → rule</span></div>
+        <div class="k" style="margin-top:6px">${L.neoNow}</div><ul style="font-size:13px;list-style:none;padding:0;display:grid;gap:8px">${rows || `<li>${L.empty}</li>`}</ul></div>
+    </div>`;
+}
+
 let i = -1, busy = false;
 function show() {
   const S = STEPS[lang], s = S[Math.max(i, 0)];
@@ -233,11 +277,13 @@ function show() {
   $("bar-fill").style.width = `${((i + 1) / S.length) * 100}%`;
   $("next").textContent = i < 0 ? "Start ▶" : i >= S.length - 1 ? (lang === "en" ? "Done" : "終了") : (lang === "en" ? "Next ▶" : "次へ ▶");
   $("next").disabled = busy || i >= S.length - 1;
-  $("busy").textContent = busy ? (lang === "en" ? "Agent is working…" : "エージェントが対応中…") : "";
+  const ovBusy = i >= 0 && STEPS[lang][i].overlay;
+  $("busy").textContent = !busy ? "" : ovBusy ? (lang === "en" ? "Running 1,000,000 messages…" : "100万件を処理中…") : (lang === "en" ? "Agent is working…" : "エージェントが対応中…");
   $("lang").textContent = lang === "en" ? "日本語" : "English";
   $("restart").textContent = lang === "en" ? "Restart" : "最初から";
-  $("intro-body").innerHTML = INTRO[lang];
-  $("intro").hidden = i >= 0;
+  const ov = i >= 0 && STEPS[lang][i].overlay;
+  if (i < 0) $("intro-body").innerHTML = INTRO[lang];
+  $("intro").hidden = !(i < 0 || ov);
   if (i < 0) $("title").textContent = lang === "en" ? "Overview — press Start to begin the demo" : "概要 — Start でデモを始めます";
 }
 async function next() {

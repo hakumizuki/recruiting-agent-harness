@@ -126,7 +126,9 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, .
 .rule b { color: #5a33b0; }
 .rule .ex { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #rules { display: flex; flex-direction: column; gap: 6px; }
-.b-learn { background: #7a4fd0; color: #fff; } .b-cls { background: #f0eafc; color: #5a33b0; }
+.b-learn { background: #7a4fd0; color: #fff; } .b-neo { background: #018bff; color: #fff; }
+.ev.neo { border-color: #9cd0ff; background: #f0f8ff; }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; } .chips span { font-size: 12px; background: #dff0ff; color: #0b5cad; border-radius: 6px; padding: 0 7px; } .b-cls { background: #f0eafc; color: #5a33b0; }
 .ev.learn { border-color: #7a4fd0; background: #f6f2fd; }
 .cmp { width: 100%; border-collapse: collapse; font-size: 13px; }
 .cmp th, .cmp td { padding: 4px 6px; text-align: right; border-bottom: 1px solid var(--line); }
@@ -203,6 +205,7 @@ const T = {
     rulesTitle: "ハーネスが覚えたルール", noRules: "まだありません。確認待ちの返信を承認すると、その種類の返信を覚えます",
     cmpTitle: "初日と1週間後の比較", cAuto: "自動で送信", cReview: "人の確認", cEsc: "上長へ", cInc: "事故",
     cls: "種類", learn: "学習", ex: "例: ",
+    neoAdd: "Neo4j に保存", neoFound: "Neo4j で検索", neoHit: (t, sc) => `承認済みの「${t}」と似ている（${sc}）`, neoNone: "似た承認済みメッセージはまだない",
   },
   en: {
     title: "Recruiter Assistant", hOn: "Harness ON", hOff: "Harness OFF", auto: "Auto", step: "Step", reset: "New day",
@@ -226,6 +229,7 @@ const T = {
     rulesTitle: "Rules the harness has learned", noRules: "None yet. Approve a reply that's waiting for review, and the harness learns that kind of reply",
     cmpTitle: "Day 1 vs. one week later", cAuto: "Sent automatically", cReview: "Human review", cEsc: "Escalated", cInc: "Incidents",
     cls: "Type", learn: "Learned", ex: "e.g. ",
+    neoAdd: "Saved to Neo4j", neoFound: "Neo4j lookup", neoHit: (t, sc) => `similar to approved “${t}” (${sc})`, neoNone: "no similar approved message yet",
   },
 };
 
@@ -407,6 +411,17 @@ function onEvent(e) {
         st().esc++;
       }
       renderUC();
+      break;
+    }
+    case "graph": {
+      const chips = `<div class="chips">${e.concepts.map(c => `<span>${esc(c)}</span>`).join("")}</div>`;
+      const what = e.hit ? t("neoHit")(esc(e.hit.text.slice(0, 26)), e.hit.score.toFixed(2)) : t("neoNone");
+      addEv("neo", "b-neo", "Neo4j", `<div class="what">${t("neoFound")} · ${esc(e.candidate)}: ${what}</div>${chips}`, e.detail);
+      break;
+    }
+    case "graph_add": {
+      const chips = `<div class="chips">${e.concepts.map(c => `<span>${esc(c)}</span>`).join("")}</div>`;
+      addEv("neo", "b-neo", "Neo4j", `<div class="what">${t("neoAdd")} · ${esc(e.candidate)}</div>${chips}`);
       break;
     }
     case "classify":

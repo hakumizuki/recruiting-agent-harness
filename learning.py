@@ -61,7 +61,7 @@ class RuleBook:
             return False
         r = self.rule(category)
         if r.state == "auto" and knowledge_version and r.knowledge_version != knowledge_version:
-            self._move(r, "learning", "依存する情報の版が変わった", t)
+            self._move(r, "learning", "knowledge version changed", t)
             r.recent.clear()
         return r.state == "auto"
 
@@ -73,14 +73,14 @@ class RuleBook:
         if knowledge_version and r.knowledge_version != knowledge_version:
             r.knowledge_version = knowledge_version
             if r.state != "learning":
-                self._move(r, "learning", "依存する情報の版が変わった", t)
+                self._move(r, "learning", "knowledge version changed", t)
             r.recent.clear()
         r.recent.append(1 if approved else 0)
         lo, hi = r.bounds()
         if r.state in ("learning", "suspended") and len(r.recent) >= MIN_N and lo >= PROMOTE:
-            self._move(r, "auto", f"承認率の下限 {lo:.3f} ≥ {PROMOTE}（n={len(r.recent)}）", t)
+            self._move(r, "auto", f"approval lower bound {lo:.3f} ≥ {PROMOTE} (n={len(r.recent)})", t)
         elif r.state == "auto" and hi < DEMOTE:
-            self._move(r, "suspended", f"承認率の上限 {hi:.3f} < {DEMOTE}（n={len(r.recent)}）", t)
+            self._move(r, "suspended", f"approval upper bound {hi:.3f} < {DEMOTE} (n={len(r.recent)})", t)
             r.recent.clear()
 
     @staticmethod
