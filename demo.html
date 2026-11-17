@@ -25,6 +25,26 @@ body { display: flex; flex-direction: column; background: var(--bg); color: var(
 #progress { height: 4px; background: rgba(255,255,255,.15); grid-column: 1 / -1; border-radius: 2px; overflow: hidden; }
 #progress i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
 iframe { flex: 1; border: 0; width: 100%; background: #fff; }
+#stage { flex: 1; position: relative; display: flex; min-height: 0; }
+#intro { position: absolute; inset: 0; background: var(--bg); overflow-y: auto; display: flex; justify-content: center; padding: 28px 20px; z-index: 2; }
+#intro[hidden] { display: none; }
+.intro-wrap { max-width: 1080px; width: 100%; display: grid; gap: 18px; align-content: start; }
+.intro-wrap h2 { margin: 0; font-size: 30px; line-height: 1.3; text-wrap: balance; }
+.intro-wrap .lead { margin: 0; font-size: 17px; color: var(--muted); }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 900px) { .cards { grid-template-columns: 1fr; } }
+.card { background: #fff; border: 1px solid #e3e6eb; border-radius: 14px; padding: 18px; display: grid; gap: 10px; align-content: start; }
+.card .k { font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--accent); text-transform: uppercase; }
+.card h3 { margin: 0; font-size: 19px; }
+.card p, .card li { margin: 0; font-size: 15px; line-height: 1.6; }
+.card ul { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
+.big { font-size: 34px; font-weight: 700; line-height: 1.1; }
+.big small { font-size: 14px; font-weight: 500; color: var(--muted); display: block; margin-top: 2px; }
+.flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.flow span { background: #f0eafc; color: #5a33b0; border-radius: 8px; padding: 4px 10px; font-weight: 700; }
+.flow i { font-style: normal; color: var(--muted); }
+.tech { display: flex; flex-wrap: wrap; gap: 6px; }
+.tech span { border: 1px solid #e3e6eb; border-radius: 99px; padding: 2px 10px; font-size: 13px; background: #fafbfc; }
 @media (max-width: 800px) { #bar { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -39,7 +59,10 @@ iframe { flex: 1; border: 0; width: 100%; background: #fff; }
   </div>
   <div id="progress"><i id="bar-fill" style="width:0"></i></div>
 </div>
-<iframe id="app"></iframe>
+<div id="stage">
+  <div id="intro"><div class="intro-wrap" id="intro-body"></div></div>
+  <iframe id="app"></iframe>
+</div>
 
 <script>
 let lang = location.hash === "#ja" ? "ja" : "en";
@@ -127,6 +150,80 @@ const STEPS = {
   ],
 };
 
+// ---------- 冒頭の概要（Start を押すまで表示）
+const INTRO = {
+  en: `
+    <h2>An AI assistant for Japanese recruiters — and the harness that keeps it safe and lets it learn</h2>
+    <p class="lead">This demo simulates a Japanese recruiter's conversations with students.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="k">Background</div>
+        <h3>Japan hires new graduates in bulk</h3>
+        <p>Companies hire a whole class of graduating students every spring. A small recruiting team handles hundreds of candidates at once, mostly over <b>LINE</b>, Japan's main chat app.</p>
+        <div class="big">9:00 – 18:00<small>interviews back to back, so replies get pushed to the night</small></div>
+        <p>Most are routine (“What should I wear?”). A few are critical: a student hinting they might decline. Miss one of those, and you lose a hire you spent months on.</p>
+      </div>
+      <div class="card">
+        <div class="k">What you'll see</div>
+        <h3>How the harness makes replies easier — and improves itself</h3>
+        <ul>
+          <li><b>Without a harness</b>, the agent replies cheerfully to a student who is about to back out.</li>
+          <li><b>With the harness</b>, safe replies go out, unsure ones wait for a human, risky ones go to the manager.</li>
+          <li>Each approval <b>teaches the harness a rule</b>. One week later, the same kinds of questions are answered automatically.</li>
+          <li>It keeps stopping risky messages, no matter what it has learned.</li>
+        </ul>
+        <div class="flow"><span>Message</span><i>→</i><span>Guard</span><i>→</i><span>Learned rules</span><i>→</i><span>Auto / Review / Manager</span></div>
+      </div>
+      <div class="card">
+        <div class="k">Built with</div>
+        <h3>The same cheap open model, start to finish</h3>
+        <p>Only the harness changes. The model is never swapped.</p>
+        <div class="tech">
+          <span>ai& Inference</span><span>GLM-5.3 Flash</span><span>Anthropic-compatible API</span>
+          <span>Custom agent loop (Python)</span><span>Permission layer</span><span>Guard model</span>
+          <span>Verification</span><span>Learning from approvals</span><span>Wilson-bound rule book</span>
+          <span>Neo4j concept graph</span><span>Live view (SSE)</span>
+        </div>
+        <p>For scale, rules are promoted and demoted by statistics, and similar messages are found through a Neo4j concept graph — a 1M-message simulation cut wrong auto-replies from 18.7% to 1.8%.</p>
+      </div>
+    </div>`,
+  ja: `
+    <h2>日本の採用担当を助けるAIアシスタントと、それを安全に動かし、学ばせるハーネス</h2>
+    <p class="lead">このデモは、日本の採用担当と学生とのやりとりを想定してつくりました。</p>
+    <div class="cards">
+      <div class="card">
+        <div class="k">背景</div>
+        <h3>日本には「新卒一括採用」がある</h3>
+        <p>毎年春に、卒業する学生をまとめて採用します。少人数の採用チームが数百人の候補者と同時にやりとりし、その多くは <b>LINE</b> で行われます。</p>
+        <div class="big">9:00 – 18:00<small>面接が詰まっていて、返信は夜に回りがち</small></div>
+        <p>ほとんどは「服装は？」のような事務的な質問です。でも、ごく一部に「辞退するかも」という大事なサインが混ざっています。見逃すと、何か月もかけた採用を失います。</p>
+      </div>
+      <div class="card">
+        <div class="k">このデモで見せること</div>
+        <h3>ハーネスが返信業務を楽にし、自分で改善していく様子</h3>
+        <ul>
+          <li><b>ハーネスなし</b>だと、辞退しかけている学生にも明るく返信してしまう</li>
+          <li><b>ハーネスあり</b>だと、安全な返信は自動、迷うものは人が確認、危ないものは上長へ</li>
+          <li>担当者が承認するたびに、<b>ハーネスがルールを覚える</b>。1週間後には同じ種類の質問に自動で返信する</li>
+          <li>何を覚えても、危ないメッセージは止め続ける</li>
+        </ul>
+        <div class="flow"><span>連絡</span><i>→</i><span>ガード</span><i>→</i><span>覚えたルール</span><i>→</i><span>自動 / 確認 / 上長</span></div>
+      </div>
+      <div class="card">
+        <div class="k">使っている技術</div>
+        <h3>最初から最後まで、同じ安いオープンモデル</h3>
+        <p>変えるのはハーネスだけ。モデルは一度も入れ替えません。</p>
+        <div class="tech">
+          <span>ai& Inference</span><span>GLM-5.3 Flash</span><span>Anthropic 互換 API</span>
+          <span>自作のエージェントループ（Python）</span><span>権限レイヤー</span><span>ガード用モデル</span>
+          <span>検証</span><span>承認からの学習</span><span>Wilson 区間によるルール昇格・降格</span>
+          <span>Neo4j の概念グラフ</span><span>リアルタイム表示（SSE）</span>
+        </div>
+        <p>大量データ向けには、ルールを統計で昇格・降格させ、似たメッセージを Neo4j の概念グラフで探します。100万件のシミュレーションでは、間違った自動返信が 18.7% から 1.8% に減りました。</p>
+      </div>
+    </div>`,
+};
+
 let i = -1, busy = false;
 function show() {
   const S = STEPS[lang], s = S[Math.max(i, 0)];
@@ -139,6 +236,9 @@ function show() {
   $("busy").textContent = busy ? (lang === "en" ? "Agent is working…" : "エージェントが対応中…") : "";
   $("lang").textContent = lang === "en" ? "日本語" : "English";
   $("restart").textContent = lang === "en" ? "Restart" : "最初から";
+  $("intro-body").innerHTML = INTRO[lang];
+  $("intro").hidden = i >= 0;
+  if (i < 0) $("title").textContent = lang === "en" ? "Overview — press Start to begin the demo" : "概要 — Start でデモを始めます";
 }
 async function next() {
   if (busy || i >= STEPS[lang].length - 1) return;
