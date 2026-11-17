@@ -1,0 +1,7 @@
+.venv/
+.env
+results/
+__pycache__/
+# 内部用メモ（公開しない）
+ideas.html
+status.html

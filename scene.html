@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learning Harness</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+:root {
+  --bg: #f5f6f8; --card: #fff; --fg: #1d2330; --muted: #6b7384; --line: #e3e6eb;
+  --green: #17845a; --green-bg: #e4f4ec; --amber: #b26a00; --amber-bg: #fdf1dc;
+  --red: #c62f2f; --red-bg: #fde8e8; --gray-bg: #eef0f3; --blue: #2d5bd2; --blue-bg: #e8eefc;
+  --lineapp: #06c755; --teams: #5b5fc7;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.6 "Noto Sans JP", system-ui, sans-serif; display: flex; flex-direction: column; }
+button { font: inherit; }
+
+header { background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+h1 { font-size: 20px; margin: 0; }
+.sub { color: var(--muted); font-size: 13px; }
+.spacer { flex: 1; }
+.toggle { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.toggle button { border: 0; background: var(--card); padding: 8px 14px; font-weight: 700; cursor: pointer; color: var(--muted); }
+.toggle .on.sel { background: var(--green); color: #fff; }
+.toggle .off.sel { background: var(--red); color: #fff; }
+.toggle .mode.sel { background: var(--fg); color: #fff; }
+.toggle .lang.sel { background: var(--blue); color: #fff; }
+#reset { border: 1px solid var(--line); background: var(--card); padding: 8px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
+#stepbar { background: var(--fg); color: #fff; padding: 8px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+#stepbar[hidden] { display: none; }
+#stepbar .n { font-weight: 700; background: #fff; color: var(--fg); border-radius: 6px; padding: 0 10px; font-size: 13px; }
+#stepbar b { font-size: 16px; }
+#stepbar .hint { font-size: 12px; opacity: .6; }
+#stepbar button { border: 0; background: #fff; color: var(--fg); padding: 6px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+#stepbar button.ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5); }
+#stepbar button:disabled { opacity: .4; }
+
+main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; padding: 16px 20px; }
+@media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+.col { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; min-width: 0; }
+.panel.grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.panel h2 { font-size: 14px; margin: 0 0 10px; color: var(--muted); font-weight: 500; }
+.scroll { overflow-y: auto; flex: 1; min-height: 0; padding-right: 4px; }
+
+#buttons { display: flex; flex-direction: column; gap: 6px; }
+.ebtn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+.ebtn:hover { border-color: var(--fg); }
+.ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; flex: none; }
+.ic.line { background: var(--lineapp); } .ic.mail { background: #4a5568; } .ic.chat { background: var(--teams); }
+.ebtn.used { opacity: .45; }
+.ebtn.bonus { border-style: dashed; }
+.ebtn small { display: block; color: var(--muted); font-size: 12px; }
+
+#feed { display: flex; flex-direction: column; gap: 10px; }
+.msg { animation: in .3s ease; }
+@keyframes in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .msg, .ev, .inc { animation: none !important; } }
+.msg .who { font-size: 12px; color: var(--muted); margin-bottom: 2px; display: flex; gap: 6px; align-items: center; }
+.msg .who .ic { width: 16px; height: 16px; border-radius: 4px; font-size: 9px; }
+.bubble { background: #e9f9ef; border-radius: 4px 14px 14px 14px; padding: 8px 12px; white-space: pre-wrap; font-size: 14px; margin-top: 4px; }
+.bubble.doc { background: var(--gray-bg); font-size: 13px; color: var(--muted); }
+.mailcard { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; white-space: pre-wrap; }
+.mailcard b { display: block; font-size: 14px; margin-bottom: 2px; }
+.teamscard { border-left: 4px solid var(--teams); background: #f0f0fb; border-radius: 6px; padding: 8px 12px; font-size: 14px; }
+
+#timeline { display: flex; flex-direction: column; gap: 6px; }
+.ev { display: grid; grid-template-columns: 104px 1fr; gap: 10px; align-items: start; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); cursor: pointer; animation: in .25s ease; }
+.ev:hover { border-color: #c5cad3; }
+.badge { font-size: 12px; font-weight: 700; text-align: center; border-radius: 6px; padding: 2px 0; }
+.b-allow { background: var(--gray-bg); color: var(--muted); } .b-auto { background: var(--green-bg); color: var(--green); }
+.b-queue { background: var(--amber-bg); color: var(--amber); } .b-block, .b-reject { background: var(--red); color: #fff; }
+.b-raw { background: var(--red-bg); color: var(--red); } .b-guard { background: var(--blue-bg); color: var(--blue); }
+.b-vok { background: var(--green); color: #fff; } .b-vng { background: var(--red); color: #fff; }
+.what { font-weight: 700; }
+.detail { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.why { font-size: 13px; margin-top: 1px; }
+.ev.read { padding: 3px 10px; border-color: transparent; background: var(--bg); }
+.ev.read .what { font-weight: 400; color: var(--muted); font-size: 13px; }
+.ev.model { border-style: dashed; }
+.ev.block, .ev.reject, .ev.vng { border-color: var(--red); background: var(--red-bg); }
+.ev.raw { border-color: #f3c4c4; }
+.ev.current { outline: 3px solid var(--blue); outline-offset: 1px; }
+.ev .more { display: none; margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 6px; }
+.ev.open .more { display: block; }
+.ev.open .detail { white-space: normal; }
+.more h4 { margin: 6px 0 3px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.more pre { margin: 0; background: #f0f2f5; border-radius: 8px; padding: 6px 8px; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; word-break: break-all; max-height: 280px; overflow: auto; }
+.quote { background: var(--bg); border-radius: 8px; padding: 4px 10px; font-size: 13px; margin-top: 3px; }
+.plan { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+.plan span { font-size: 12px; background: var(--gray-bg); border-radius: 6px; padding: 0 7px; }
+.sep { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--fg); margin: 8px 0 2px; }
+.sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.res-tag { font-size: 11px; color: var(--muted); margin-left: 6px; font-weight: 400; }
+.idle { color: var(--muted); padding: 30px 8px; text-align: center; font-size: 14px; }
+.working { font-size: 13px; color: var(--blue); padding: 4px 10px; }
+
+.uc { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.uc:last-child { border-bottom: 0; }
+.uc .num { width: 30px; height: 30px; border-radius: 50%; background: var(--gray-bg); color: var(--muted); display: grid; place-items: center; font-weight: 700; }
+.uc .ttl { font-weight: 700; font-size: 14px; }
+.uc .el { font-size: 12px; color: var(--muted); }
+.uc .stat { font-size: 13px; text-align: right; white-space: nowrap; }
+.uc .stat b { font-size: 18px; }
+.uc.good .num { background: var(--green); color: #fff; }
+.uc.bad .num { background: var(--red); color: #fff; }
+.uc.bad .stat { color: var(--red); }
+#incidents { display: flex; flex-direction: column; gap: 6px; }
+.inc { background: var(--red); color: #fff; border-radius: 10px; padding: 10px 12px; font-size: 13px; animation: in .3s ease; }
+.inc b { font-size: 15px; display: block; }
+.box h3 { margin: 0 0 6px; font-size: 14px; display: flex; justify-content: space-between; }
+.box.done h3 { color: var(--green); } .box.pending h3 { color: var(--amber); } .box.escalated h3 { color: var(--red); }
+.box ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.box li { font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.box li .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.box li b { white-space: nowrap; }
+.box .empty { color: var(--muted); }
+.approve { border: 1px solid var(--amber); background: var(--card); color: var(--amber); border-radius: 6px; padding: 1px 10px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.approve:disabled { border-color: var(--green); color: var(--green); cursor: default; }
+.toggle .day.sel { background: #7a4fd0; color: #fff; }
+#resetmem { border: 1px solid var(--line); background: var(--card); padding: 8px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; color: var(--muted); }
+.rule { border: 1px solid #d9ccf5; background: #f6f2fd; border-radius: 10px; padding: 8px 10px; font-size: 13px; animation: in .3s ease; }
+.rule b { color: #5a33b0; }
+.rule .ex { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#rules { display: flex; flex-direction: column; gap: 6px; }
+.b-learn { background: #7a4fd0; color: #fff; } .b-cls { background: #f0eafc; color: #5a33b0; }
+.ev.learn { border-color: #7a4fd0; background: #f6f2fd; }
+.cmp { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cmp th, .cmp td { padding: 4px 6px; text-align: right; border-bottom: 1px solid var(--line); }
+.cmp th:first-child, .cmp td:first-child { text-align: left; color: var(--muted); }
+.cmp td b { font-size: 18px; }
+.cmp .cur { background: #f6f2fd; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1 data-i="title"></h1><div class="sub" id="today"></div></div>
+  <div class="spacer"></div>
+  <div class="toggle"><button class="lang sel" id="btn-ja">日本語</button><button class="lang" id="btn-en">EN</button></div>
+  <div class="toggle"><button class="on sel" id="btn-on" data-i="hOn"></button><button class="off" id="btn-off" data-i="hOff"></button></div>
+  <div class="toggle"><button class="day sel" id="btn-d1" data-i="d1"></button><button class="day" id="btn-d7" data-i="d7"></button></div>
+  <div class="toggle"><button class="mode sel" id="btn-auto" data-i="auto"></button><button class="mode" id="btn-step" data-i="step"></button></div>
+  <button id="reset" data-i="reset"></button>
+  <button id="resetmem" data-i="resetmem"></button>
+</header>
+<div id="stepbar" hidden>
+  <span class="n" id="step-n">STEP 1</span>
+  <span><span data-i="nextStep"></span> <b id="step-next"></b></span>
+  <span class="spacer"></span>
+  <span class="hint" data-i="hint"></span>
+  <button id="step-go" data-i="next"></button>
+  <button id="step-all" class="ghost" data-i="all"></button>
+</div>
+
+<main>
+  <div class="col">
+    <div class="panel"><h2 data-i="arrive"></h2><div id="buttons"></div></div>
+    <div class="panel grow"><h2 data-i="feedTitle"></h2><div class="scroll" id="feedwrap"><div id="feed"></div></div></div>
+  </div>
+
+  <div class="col">
+    <div class="panel grow"><h2 data-i="flow"></h2><div class="scroll" id="tlwrap"><div id="timeline"></div><div class="working" id="working" hidden></div></div></div>
+  </div>
+
+  <div class="col">
+    <div class="panel"><h2 data-i="rulesTitle"></h2><div id="rules"></div></div>
+    <div class="panel"><h2 data-i="cmpTitle"></h2><table class="cmp" id="cmp"></table></div>
+    <div id="incidents"></div>
+    <div class="panel grow">
+      <div class="scroll" style="display:flex;flex-direction:column;gap:14px">
+        <div class="box done"><h3><span data-i="bDone"></span><span id="n-done">0</span></h3><ul id="done"></ul></div>
+        <div class="box pending"><h3><span data-i="bPending"></span><span id="n-pending">0</span></h3><ul id="pending"></ul></div>
+        <div class="box escalated"><h3><span data-i="bEsc"></span><span id="n-escalated">0</span></h3><ul id="escalated"></ul></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const T = {
+  ja: {
+    title: "採用担当アシスタント", hOn: "ハーネス ON", hOff: "ハーネス OFF", auto: "自動", step: "ステップ", reset: "新しい1日",
+    nextStep: "次の一歩:", hint: "スペースキーでも進めます", next: "次へ ▶", all: "最後まで",
+    arrive: "連絡を届ける（ボタンを押す）", feedTitle: "届いた連絡", flow: "ハーネスの動き",
+    idle: "左のボタンを押すと連絡が届き、エージェントの行動とハーネスの判断がここに流れます", working: "エージェントが対応中…",
+    bDone: "自動で実行", bPending: "人の確認待ち", bEsc: "上長へ", empty: "まだありません",
+    uc1: "日々の連絡を片付ける", uc1el: "権限: 安全なものは自動、自由文は人が確認",
+    uc2: "辞退の兆候を見逃さない", uc2el: "ガード: 送る前に兆候を確認し、上長へ",
+    uc3: "最終面接の申し送り", uc3el: "検証: 懸念点の抜けと送り漏れを差し戻す",
+    s1: (a, q) => `自動 <b>${a}</b> · 確認 <b>${q}</b>`, s2: c => `上長へ <b>${c}</b>`, s2bad: n => `事故 <b>${n}</b>`,
+    s3: (ok, ng) => `検証済み <b>${ok}</b>${ng ? ` · 差し戻し ${ng}` : ""}`, s3off: k => `確認なしで送信 <b>${k}</b>`,
+    ch: { line: "LINE", mail: "メール", chat: "Teams" },
+    model: "モデル", read: "読み取り", finish: "完了", finishText: "この連絡の対応を完了",
+    dec: { allow: "許可", auto: "自動で実行", queue: "人の確認待ち", block: "ブロック", reject: "差し戻し" }, raw: "チェックなし",
+    why: "理由: ", offRun: "ハーネスOFF: そのまま実行", guard: "ガード", guardWhat: "送信前チェック", risk: "辞退の兆候あり", noRisk: "兆候なし",
+    vOk: "検証 OK", vNg: "検証 差し戻し", err: "エラー", noThought: "（考えを書かずにツールを選択）",
+    result: "ツールの結果（モデルに返したもの）", hasResult: "結果 ▾", stoppedBy: "ガードが停止: ",
+    approve: "承認", sent: "送信済み", incident: "事故", from: "から",
+    title: "承認するほど任せられる", d1: "初日", d7: "1週間後", resetmem: "学習をリセット", reset: "この日をやり直す",
+    rulesTitle: "ハーネスが覚えたルール", noRules: "まだありません。確認待ちの返信を承認すると、その種類の返信を覚えます",
+    cmpTitle: "初日と1週間後の比較", cAuto: "自動で送信", cReview: "人の確認", cEsc: "上長へ", cInc: "事故",
+    cls: "種類", learn: "学習", ex: "例: ",
+  },
+  en: {
+    title: "Recruiter Assistant", hOn: "Harness ON", hOff: "Harness OFF", auto: "Auto", step: "Step", reset: "New day",
+    nextStep: "Next step:", hint: "Press Space to advance", next: "Next ▶", all: "Run to end",
+    arrive: "Send a message in (press a button)", feedTitle: "Incoming", flow: "What the harness is doing",
+    idle: "Press a button on the left to send a message in, then watch the agent's actions and the harness's decisions stream in here", working: "Agent is working…",
+    bDone: "Done automatically", bPending: "Waiting for human review", bEsc: "Escalated to manager", empty: "Nothing yet",
+    uc1: "Clear everyday messages", uc1el: "Permissions: safe actions run, free text gets reviewed",
+    uc2: "Catch signs of withdrawal", uc2el: "Guard: check before sending, escalate to manager",
+    uc3: "Final-interview handovers", uc3el: "Verification: send back missing concerns or handovers",
+    s1: (a, q) => `auto <b>${a}</b> · review <b>${q}</b>`, s2: c => `escalated <b>${c}</b>`, s2bad: n => `incidents <b>${n}</b>`,
+    s3: (ok, ng) => `verified <b>${ok}</b>${ng ? ` · sent back ${ng}` : ""}`, s3off: k => `sent unchecked <b>${k}</b>`,
+    ch: { line: "LINE", mail: "Email", chat: "Teams" },
+    model: "Model", read: "Read", finish: "Done", finishText: "Finished handling this message",
+    dec: { allow: "Allowed", auto: "Auto-run", queue: "Needs review", block: "Blocked", reject: "Sent back" }, raw: "No check",
+    why: "Why: ", offRun: "Harness OFF: ran as-is", guard: "Guard", guardWhat: "Pre-send check", risk: "Withdrawal risk", noRisk: "No warning signs",
+    vOk: "Verified", vNg: "Sent back", err: "Error", noThought: "(picked tools without explaining)",
+    result: "Tool result (returned to the model)", hasResult: "result ▾", stoppedBy: "Stopped by guard: ",
+    approve: "Approve", sent: "Sent", incident: "Incident", from: "",
+    title: "The more you approve, the more it handles", d1: "Day 1", d7: "1 week later", resetmem: "Reset learning", reset: "Restart this day",
+    rulesTitle: "Rules the harness has learned", noRules: "None yet. Approve a reply that's waiting for review, and the harness learns that kind of reply",
+    cmpTitle: "Day 1 vs. one week later", cAuto: "Sent automatically", cReview: "Human review", cEsc: "Escalated", cInc: "Incidents",
+    cls: "Type", learn: "Learned", ex: "e.g. ",
+  },
+};
+
+const $ = (id) => document.getElementById(id);
+let lang = location.hash === "#en" ? "en" : "ja", harnessOn = true, stepMode = false, sid = null, es = null, day = "d1";
+const stats = {};  // key: `${harnessOn}-${lang}-${day}`
+const skey = (d) => `${harnessOn}-${lang}-${d || day}`;
+function st() { return stats[skey()] ||= { auto: 0, review: 0, esc: 0, inc: 0 }; }
+function renderRules(rules) {
+  $("rules").innerHTML = rules.length ? rules.map(r => `<div class="rule"><b>#${r.n} ${esc(r.label)}</b> · ${esc(r.day)}<div class="ex">${t("ex")}“${esc(r.example_msg)}”</div></div>`).join("")
+    : `<div class="sub">${t("noRules")}</div>`;
+}
+function renderCmp() {
+  const a = stats[skey("d1")] || {}, b = stats[skey("d7")] || {};
+  const row = (k, lbl) => `<tr><td>${lbl}</td><td class="${day === "d1" ? "cur" : ""}"><b>${a[k] ?? "–"}</b></td><td class="${day === "d7" ? "cur" : ""}"><b>${b[k] ?? "–"}</b></td></tr>`;
+  $("cmp").innerHTML = `<tr><th></th><th>${t("d1")}</th><th>${t("d7")}</th></tr>` + row("auto", t("cAuto")) + row("review", t("cReview")) + row("esc", t("cEsc")) + row("inc", t("cInc"));
+}
+const t = (k) => T[lang][k];
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ICON = { line: "L", mail: "✉", chat: "T" };
+const count = { done: 0, pending: 0, escalated: 0 };
+const uc = {};
+const evById = {};
+
+async function newDay() {
+  if (es) es.close();
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.dataset.i); });
+  document.title = t("title");
+  for (const b of ["done", "pending", "escalated"]) { count[b] = 0; $("n-" + b).textContent = 0; $(b).innerHTML = `<li class="empty">${t("empty")}</li>`; }
+  stats[skey()] = { auto: 0, review: 0, esc: 0, inc: 0 };
+  renderCmp();
+  $("incidents").innerHTML = ""; $("feed").innerHTML = "";
+  $("timeline").innerHTML = `<div class="idle">${t("idle")}</div>`;
+  $("stepbar").hidden = true; $("working").hidden = true;
+  const cat = await fetch(`/api/scene-catalog?lang=${lang}&day=${day}`).then(r => r.json());
+  renderRules(cat.rules);
+  $("today").textContent = `${cat.today} · ${cat.model}`;
+  $("buttons").innerHTML = "";
+  for (const e of cat.events) {
+    const b = document.createElement("button");
+    b.className = "ebtn" + (e.bonus ? " bonus" : "");
+    b.innerHTML = `<span class="ic ${e.channel}">${ICON[e.channel]}</span><span>${esc(e.btn)}<small>${t("ch")[e.channel]} · ${esc(e.from)}</small></span>`;
+    b.onclick = () => { b.classList.add("used"); fetch(`/api/event?session=${sid}&e=${e.id}`, { method: "POST" }); };
+    $("buttons").appendChild(b);
+  }
+  const r = await fetch(`/api/session?harness=${harnessOn ? 1 : 0}&lang=${lang}&step=${stepMode ? 1 : 0}&skip_reads=1&scene=${day}`, { method: "POST" }).then(r => r.json());
+  sid = r.session;
+  es = new EventSource(`/api/stream?session=${sid}`);
+  es.onmessage = (m) => onEvent(JSON.parse(m.data));
+}
+
+const sel = (on, off) => { $(on).classList.add("sel"); $(off).classList.remove("sel"); };
+$("btn-ja").onclick = () => { lang = "ja"; sel("btn-ja", "btn-en"); newDay(); };
+$("btn-en").onclick = () => { lang = "en"; sel("btn-en", "btn-ja"); newDay(); };
+$("btn-on").onclick = () => { harnessOn = true; sel("btn-on", "btn-off"); newDay(); };
+$("btn-off").onclick = () => { harnessOn = false; sel("btn-off", "btn-on"); newDay(); };
+$("btn-auto").onclick = () => { stepMode = false; sel("btn-auto", "btn-step"); $("stepbar").hidden = true; fetch(`/api/mode?session=${sid}&step=0`, { method: "POST" }); };
+$("btn-step").onclick = () => { stepMode = true; sel("btn-step", "btn-auto"); fetch(`/api/mode?session=${sid}&step=1`, { method: "POST" }); };
+$("reset").onclick = () => newDay();
+$("btn-d1").onclick = () => { day = "d1"; sel("btn-d1", "btn-d7"); newDay(); };
+$("btn-d7").onclick = () => { day = "d7"; sel("btn-d7", "btn-d1"); newDay(); };
+$("resetmem").onclick = async () => { await fetch(`/api/memory-reset?lang=${lang}`, { method: "POST" }); for (const k in stats) delete stats[k]; day = "d1"; sel("btn-d1", "btn-d7"); newDay(); };
+if (lang === "en") sel("btn-en", "btn-ja");
+
+async function stepGo(all) {
+  if (!sid || $("step-go").disabled) return;
+  $("step-go").disabled = true; $("step-all").disabled = true;
+  if (all) { stepMode = false; sel("btn-auto", "btn-step"); $("stepbar").hidden = true; }
+  await fetch(`/api/step?session=${sid}${all ? "&all=1" : ""}`, { method: "POST" });
+}
+$("step-go").onclick = () => stepGo(false);
+$("step-all").onclick = () => stepGo(true);
+document.addEventListener("keydown", (e) => { if (e.code === "Space" && !$("stepbar").hidden) { e.preventDefault(); stepGo(false); } });
+
+function renderMore(obj) {
+  return Object.entries(obj || {}).map(([k, v]) => `<h4>${esc(k)}</h4><pre>${esc(typeof v === "string" ? v : JSON.stringify(v, null, 2))}</pre>`).join("");
+}
+function addEv(cls, badgeCls, badge, html, more) {
+  const tl = $("timeline");
+  tl.querySelector(".idle")?.remove();
+  const d = document.createElement("div");
+  d.className = "ev " + cls;
+  d.innerHTML = `<div class="badge ${badgeCls}">${badge}</div><div style="min-width:0">${html}<div class="more">${more ? renderMore(more) : ""}</div></div>`;
+  d.onclick = (e) => { if (!e.target.closest("pre")) d.classList.toggle("open"); };
+  tl.appendChild(d);
+  document.querySelectorAll(".ev.current").forEach(x => x.classList.remove("current"));
+  if (stepMode) { d.classList.add("current"); if (/block|reject|vng|guard/.test(cls)) d.classList.add("open"); }
+  $("tlwrap").scrollTop = $("tlwrap").scrollHeight;
+  return d;
+}
+function addItem(bucket, html) {
+  const ul = $(bucket);
+  if (count[bucket] === 0) ul.innerHTML = "";
+  $("n-" + bucket).textContent = ++count[bucket];
+  const li = document.createElement("li");
+  li.innerHTML = html;
+  ul.appendChild(li);
+  return li;
+}
+function renderUC() { renderCmp(); }
+
+const DEC = { allow: "b-allow", auto: "b-auto", queue: "b-queue", block: "b-block", reject: "b-reject" };
+const READS = ["list_inbox", "get_tomorrow_schedule", "get_candidate"];
+const WRITES = ["update_status", "send_line", "send_handover"];
+
+function onEvent(e) {
+  switch (e.type) {
+    case "arrive": {
+      const ch = e.channel;
+      const html = e.items.map(it => {
+        if (it.kind === "doc") return `<div class="bubble doc">📄 ${esc(it.text)}</div>`;
+        if (it.kind === "mail") return `<div class="mailcard"><b>${esc(e.subject)}</b>${esc(it.text)}</div>`;
+        if (it.kind === "chat") return `<div class="teamscard">${esc(it.text)}</div>`;
+        return `<div class="bubble">${esc(it.text)}</div>`;
+      }).join("");
+      const m = document.createElement("div");
+      m.className = "msg";
+      m.innerHTML = `<div class="who"><span class="ic ${ch}">${ICON[ch]}</span>${esc(e.from)} · ${t("ch")[ch]}</div>${html}`;
+      $("feed").appendChild(m);
+      $("feedwrap").scrollTop = $("feedwrap").scrollHeight;
+      $("timeline").querySelector(".idle")?.remove();
+      $("timeline").insertAdjacentHTML("beforeend", `<div class="sep">📩 ${esc(e.from)}${t("from")} · ${t("ch")[ch]}</div>`);
+      $("working").textContent = t("working"); $("working").hidden = false;
+      break;
+    }
+    case "idle": $("working").hidden = true; document.querySelectorAll(".ev.current").forEach(x => x.classList.remove("current")); break;
+    case "pause":
+      $("stepbar").hidden = false; $("step-n").textContent = `STEP ${e.n}`; $("step-next").textContent = e.next;
+      $("step-go").disabled = false; $("step-all").disabled = false; break;
+    case "model": {
+      const plan = e.tool_calls.length ? `<div class="plan">${e.tool_calls.map(c => `<span>${esc(c.name)}${c.input?.candidate_id ? " " + esc(c.input.candidate_id) : ""}</span>`).join("")}</div>` : "";
+      addEv("model", "b-allow", `${t("model")} #${e.turn}`, `<div class="detail">💭 ${esc((e.text || t("noThought")).replace(/\s+/g, " "))}</div>${plan}`, e.detail);
+      break;
+    }
+    case "result": {
+      const d = evById[e.id];
+      if (d) {
+        d.querySelector(".more").insertAdjacentHTML("beforeend", renderMore({ [t("result")]: e.result }));
+        const w = d.querySelector(".what");
+        if (w && !w.querySelector(".res-tag")) w.insertAdjacentHTML("beforeend", `<span class="res-tag">${t("hasResult")}</span>`);
+      }
+      break;
+    }
+    case "call": {
+      const who = e.candidate ? ` · ${esc(e.candidate)}` : "";
+      if (READS.includes(e.tool)) { evById[e.id] = addEv("read", "b-allow", t("read"), `<div class="what">${esc(e.label)}${who}</div>`, e.full); break; }
+      if (e.tool === "finish") { evById[e.id] = addEv("read", "b-allow", t("finish"), `<div class="what">${t("finishText")}</div>`, e.full); break; }
+      let bc = DEC[e.decision] || "b-allow", bl = t("dec")[e.decision] || e.decision, cls = e.decision;
+      const raw = !e.harness && WRITES.includes(e.tool);
+      if (raw) { bc = "b-raw"; bl = t("raw"); cls = "raw"; }
+      const why = raw ? `<div class="why" style="color:var(--red)">${t("offRun")}</div>` : `<div class="why">${t("why")}${esc(e.reason)}</div>`;
+      evById[e.id] = addEv(cls, bc, bl, `<div class="what">${esc(e.label)}${who}</div><div class="detail">${esc(e.detail)}</div>${why}`, e.full);
+
+      break;
+    }
+    case "guard": {
+      const v = e.risk ? `<b style="color:var(--red)">${t("risk")}</b> (${esc(e.reason)})` : `<b style="color:var(--green)">${t("noRisk")}</b> (${esc(e.reason)})`;
+      addEv(e.risk ? "guard" : "", "b-guard", t("guard"), `<div class="what">${t("guardWhat")} · ${esc(e.candidate)}</div><div class="quote">“${esc(e.message)}”</div><div class="why">${v}</div>`, e.detail);
+      break;
+    }
+    case "verify":
+      addEv(e.ok ? "" : "vng", e.ok ? "b-vok" : "b-vng", e.ok ? t("vOk") : t("vNg"), `<div class="what">${esc(e.text)}</div>`);
+
+      break;
+    case "bucket": {
+      const it = e.item;
+      if (e.bucket === "done") {
+        addItem("done", `<b>${esc(it.name)}</b><span class="t">${esc(it.kind)}: ${esc(it.text)}</span>`);
+        if (it.tool === "send_line") st().auto++;
+      }
+      if (e.bucket === "pending") {
+        const li = addItem("pending", `<b>${esc(it.name)}</b><span class="t">${esc(it.kind)}: ${esc(it.text)}</span><button class="approve">${t("approve")}</button>`);
+        li.querySelector(".approve").onclick = (ev) => { ev.target.disabled = true; ev.target.textContent = t("sent"); fetch(`/api/approve?session=${sid}&p=${encodeURIComponent(it.id)}`, { method: "POST" }); };
+        st().review++;
+      }
+      if (e.bucket === "escalated") {
+        addItem("escalated", `<b>${esc(it.name)}</b><span class="t">${it.by_guard ? t("stoppedBy") : ""}${esc(it.text)}</span>`);
+        st().esc++;
+      }
+      renderUC();
+      break;
+    }
+    case "classify":
+      addEv("read", "b-cls", t("cls"), `<div class="what">${esc(e.candidate)}: ${esc(e.label)}</div>`, e.detail);
+      break;
+    case "learned": {
+      addEv("learn", "b-learn", t("learn"), `<div class="what">${esc(e.text)}</div>`);
+      fetch(`/api/scene-catalog?lang=${lang}&day=${day}`).then(r => r.json()).then(c => renderRules(c.rules));
+      break;
+    }
+    case "incident":
+      st().inc++; renderUC();
+      $("incidents").insertAdjacentHTML("beforeend", `<div class="inc"><b>${t("incident")}: ${esc(e.name)}</b>${esc(e.why)}<br>“${esc(String(e.text).slice(0, 70))}…”</div>`);
+      break;
+    case "error":
+      addEv("block", "b-block", t("err"), `<div class="what">${esc(e.text)}</div>`); $("working").hidden = true; break;
+  }
+}
+
+newDay();
+</script>
+</body>
+</html>

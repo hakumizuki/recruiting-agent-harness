@@ -1,0 +1,313 @@
+<title>Harness Night 構成図</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 1カラム。図 → 部品表 → 実測 → ファイル の順に、上から読めば全体がわかる */
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --fg: #1c2230; --muted: #5f6879; --line: #d9dee6;
+  --accent: #2d5bd2; --accent-bg: #e7edfb;
+  --green: #17845a; --green-bg: #e2f3ea;
+  --amber: #a8640a; --amber-bg: #fbefdb;
+  --red: #c0392b; --red-bg: #fbe5e3;
+  --gray-bg: #eceff3;
+  --font: "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151b; --card: #1a1e27; --fg: #e5e8ee; --muted: #9aa2b1; --line: #2e3542;
+    --accent: #7d9cf0; --accent-bg: #222c45; --green: #4cc28a; --green-bg: #16302a;
+    --amber: #e3a35a; --amber-bg: #392a18; --red: #ee7d70; --red-bg: #3a1f1d; --gray-bg: #242a35; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151b; --card: #1a1e27; --fg: #e5e8ee; --muted: #9aa2b1; --line: #2e3542;
+  --accent: #7d9cf0; --accent-bg: #222c45; --green: #4cc28a; --green-bg: #16302a;
+  --amber: #e3a35a; --amber-bg: #392a18; --red: #ee7d70; --red-bg: #3a1f1d; --gray-bg: #242a35; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.75; }
+.wrap { max-width: 900px; margin: 0 auto; padding-block: 36px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 44px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+h1 { font-size: 28px; margin: 0; line-height: 1.35; text-wrap: balance; }
+.thesis { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; font-size: 17px; font-weight: 500; }
+.thesis b { color: var(--accent); }
+section { display: grid; gap: 14px; min-width: 0; }
+h2 { font-size: 20px; margin: 0; text-wrap: balance; }
+h2 small { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 8px; }
+p { margin: 0; max-width: 68ch; }
+code { font-family: var(--mono); font-size: .88em; background: var(--gray-bg); padding: 1px 5px; border-radius: 4px; }
+.fig { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow-x: auto; }
+.fig svg { display: block; width: 100%; min-width: 640px; height: auto; }
+svg text { font-family: var(--font); fill: var(--fg); }
+svg .muted { fill: var(--muted); }
+svg .mono { font-family: var(--mono); }
+svg .box { fill: var(--card); stroke: var(--line); stroke-width: 1.5; }
+svg .box-accent { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.5; }
+svg .box-green { fill: var(--green-bg); stroke: var(--green); stroke-width: 1.5; }
+svg .box-amber { fill: var(--amber-bg); stroke: var(--amber); stroke-width: 1.5; }
+svg .box-red { fill: var(--red-bg); stroke: var(--red); stroke-width: 1.5; }
+svg .box-gray { fill: var(--gray-bg); stroke: var(--line); stroke-width: 1.5; }
+svg .arrow { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+svg .arrow-accent { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+svg .head { fill: var(--muted); }
+svg .head-accent { fill: var(--accent); }
+svg .t-green { fill: var(--green); } svg .t-amber { fill: var(--amber); } svg .t-red { fill: var(--red); } svg .t-accent { fill: var(--accent); }
+.tbl { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; color: var(--muted); font-weight: 500; }
+tr:last-child td { border-bottom: 0; }
+td.where { font-family: var(--mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+td b { white-space: nowrap; }
+.pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 0 8px; border-radius: 99px; white-space: nowrap; }
+.p-green { background: var(--green-bg); color: var(--green); } .p-amber { background: var(--amber-bg); color: var(--amber); }
+.p-red { background: var(--red-bg); color: var(--red); } .p-gray { background: var(--gray-bg); color: var(--muted); }
+.p-accent { background: var(--accent-bg); color: var(--accent); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.card h3 { margin: 0; font-size: 15px; }
+.card ul { margin: 0; padding-left: 1.2em; font-size: 14px; display: grid; gap: 3px; }
+.card.ok { border-color: var(--green); } .card.todo { border-color: var(--amber); }
+pre { margin: 0; font-family: var(--mono); font-size: 13px; line-height: 1.7; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow-x: auto; }
+.cmt { color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Agent Harness Build Night · ~/Projects/harness-night</div>
+    <h1>採用担当アシスタントのハーネス構成</h1>
+    <div class="thesis">モデルは最後まで同じ安いオープンモデル（ai& の <code>zai-org/glm-5.3-flash</code>）。<b>変えているのはハーネスだけ。</b></div>
+  </header>
+
+  <!-- 1. 全体構成 -->
+  <section>
+    <h2>全体構成<small>どのファイルが何をしているか</small></h2>
+    <div class="fig">
+      <svg viewBox="0 0 860 330" role="img" aria-label="画面、server.py、harness.py、ai& API、world.py のつながり">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker>
+          <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="head-accent"/></marker>
+        </defs>
+        <!-- 画面 -->
+        <rect x="20" y="40" width="170" height="250" rx="12" class="box"/>
+        <text x="105" y="70" text-anchor="middle" font-weight="700" font-size="15">画面</text>
+        <text x="105" y="92" text-anchor="middle" class="muted mono" font-size="12">ui.html / scene.html</text>
+        <text x="40" y="130" font-size="13">・連絡を届けるボタン</text>
+        <text x="40" y="154" font-size="13">・ハーネスの動き</text>
+        <text x="40" y="178" font-size="13">・承認ボタン</text>
+        <text x="40" y="202" font-size="13">・ステップ実行</text>
+        <text x="40" y="226" font-size="13">・日本語 / EN</text>
+        <!-- server -->
+        <rect x="250" y="40" width="170" height="250" rx="12" class="box"/>
+        <text x="335" y="70" text-anchor="middle" font-weight="700" font-size="15">サーバー</text>
+        <text x="335" y="92" text-anchor="middle" class="muted mono" font-size="12">server.py</text>
+        <text x="270" y="130" font-size="13">・セッション（1日）</text>
+        <text x="270" y="154" font-size="13">・連絡を順番に処理</text>
+        <text x="270" y="178" font-size="13">・SSE でイベント配信</text>
+        <text x="270" y="202" font-size="13">・gate（一時停止）</text>
+        <!-- harness -->
+        <rect x="480" y="40" width="190" height="250" rx="12" class="box-accent"/>
+        <text x="575" y="70" text-anchor="middle" font-weight="700" font-size="15" class="t-accent">ハーネス</text>
+        <text x="575" y="92" text-anchor="middle" class="muted mono" font-size="12">harness.py</text>
+        <text x="500" y="130" font-size="13">・エージェントループ</text>
+        <text x="500" y="154" font-size="13">・権限レイヤー</text>
+        <text x="500" y="178" font-size="13">・ガード</text>
+        <text x="500" y="202" font-size="13">・検証</text>
+        <text x="500" y="226" font-size="13">・学習（ルール）</text>
+        <text x="500" y="250" font-size="13">・emit（可視化）</text>
+        <!-- ai& -->
+        <rect x="720" y="40" width="120" height="105" rx="12" class="box"/>
+        <text x="780" y="76" text-anchor="middle" font-weight="700" font-size="15">ai& API</text>
+        <text x="780" y="98" text-anchor="middle" class="muted" font-size="12">Anthropic 互換</text>
+        <text x="780" y="118" text-anchor="middle" class="muted mono" font-size="11">glm-5.3-flash</text>
+        <!-- world -->
+        <rect x="720" y="185" width="120" height="105" rx="12" class="box"/>
+        <text x="780" y="221" text-anchor="middle" font-weight="700" font-size="15">世界</text>
+        <text x="780" y="243" text-anchor="middle" class="muted mono" font-size="12">world.py</text>
+        <text x="780" y="263" text-anchor="middle" class="muted" font-size="12">合成データ・ツール</text>
+        <!-- arrows -->
+        <line x1="192" y1="140" x2="248" y2="140" class="arrow" marker-end="url(#ah)"/>
+        <text x="220" y="130" text-anchor="middle" class="muted" font-size="11">POST</text>
+        <line x1="248" y1="190" x2="192" y2="190" class="arrow" marker-end="url(#ah)"/>
+        <text x="220" y="210" text-anchor="middle" class="muted" font-size="11">SSE</text>
+        <line x1="422" y1="140" x2="478" y2="140" class="arrow" marker-end="url(#ah)"/>
+        <line x1="478" y1="190" x2="422" y2="190" class="arrow" marker-end="url(#ah)"/>
+        <text x="450" y="210" text-anchor="middle" class="muted" font-size="11">emit</text>
+        <line x1="672" y1="92" x2="718" y2="92" class="arrow-accent" marker-end="url(#aha)" marker-start="url(#aha)"/>
+        <line x1="672" y1="237" x2="718" y2="237" class="arrow-accent" marker-end="url(#aha)" marker-start="url(#aha)"/>
+        <text x="695" y="230" text-anchor="middle" class="muted" font-size="11">実行</text>
+        <text x="695" y="85" text-anchor="middle" class="muted" font-size="11">呼出</text>
+      </svg>
+    </div>
+    <p class="note">モデルは「何をしたいか」を tool_use で言うだけ。実際に世界（world.py）を変えるかどうかは、ハーネスが決める。</p>
+  </section>
+
+  <!-- 2. パイプライン -->
+  <section>
+    <h2>1回のツール呼び出しが通る道<small>harness.py: Session.process → Session.policy</small></h2>
+    <div class="fig">
+      <svg viewBox="0 0 860 520" role="img" aria-label="ツール呼び出しが権限レイヤーを通って実行・下書き・ブロック・差し戻しに分かれる流れ">
+        <defs>
+          <marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker>
+        </defs>
+        <!-- model -->
+        <rect x="20" y="210" width="130" height="80" rx="12" class="box"/>
+        <text x="85" y="245" text-anchor="middle" font-weight="700" font-size="14">モデル</text>
+        <text x="85" y="267" text-anchor="middle" class="muted" font-size="12">ツールを選ぶ</text>
+        <line x1="152" y1="250" x2="198" y2="250" class="arrow" marker-end="url(#b1)"/>
+        <!-- policy -->
+        <rect x="200" y="190" width="140" height="120" rx="12" class="box-accent"/>
+        <text x="270" y="235" text-anchor="middle" font-weight="700" font-size="14" class="t-accent">権限レイヤー</text>
+        <text x="270" y="257" text-anchor="middle" class="muted mono" font-size="12">policy()</text>
+        <text x="270" y="280" text-anchor="middle" class="muted" font-size="11">全呼び出しが通る</text>
+        <!-- branches -->
+        <path d="M342 210 C 380 210, 380 55, 418 55" class="arrow" marker-end="url(#b1)"/>
+        <path d="M342 230 C 380 230, 380 150, 418 150" class="arrow" marker-end="url(#b1)"/>
+        <path d="M342 260 C 380 260, 380 285, 418 285" class="arrow" marker-end="url(#b1)"/>
+        <path d="M342 290 C 380 290, 380 440, 418 440" class="arrow" marker-end="url(#b1)"/>
+        <!-- read -->
+        <rect x="420" y="25" width="200" height="60" rx="10" class="box-gray"/>
+        <text x="435" y="50" font-weight="700" font-size="13">読み取り・上長に相談</text>
+        <text x="435" y="71" class="muted" font-size="12">常に許可</text>
+        <!-- status -->
+        <rect x="420" y="110" width="200" height="80" rx="10" class="box"/>
+        <text x="435" y="135" font-weight="700" font-size="13">ステータス変更</text>
+        <text x="435" y="156" font-size="12">承諾書の返送あり → <tspan class="t-green" font-weight="700">自動</tspan></text>
+        <text x="435" y="176" font-size="12">裏付けなし → <tspan class="t-amber" font-weight="700">確認待ち</tspan></text>
+        <!-- line -->
+        <rect x="420" y="210" width="200" height="150" rx="10" class="box"/>
+        <text x="435" y="235" font-weight="700" font-size="13">LINE送信</text>
+        <rect x="435" y="246" width="170" height="28" rx="6" class="box-accent"/>
+        <text x="520" y="265" text-anchor="middle" font-size="12" class="t-accent" font-weight="700">① ガード: 辞退の兆候は？</text>
+        <text x="435" y="294" font-size="12">兆候あり → <tspan class="t-red" font-weight="700">ブロック → 上長</tspan></text>
+        <text x="435" y="314" font-size="12">定型文 → <tspan class="t-green" font-weight="700">自動</tspan></text>
+        <text x="435" y="334" font-size="12">自由文 → <tspan class="t-amber" font-weight="700">確認待ち</tspan></text>
+        <text x="435" y="352" font-size="11" class="muted">（学習シーン: 覚えた種類なら自動）</text>
+        <!-- handover -->
+        <rect x="420" y="390" width="200" height="100" rx="10" class="box"/>
+        <text x="435" y="415" font-weight="700" font-size="13">幹部へ申し送り</text>
+        <rect x="435" y="426" width="170" height="28" rx="6" class="box-accent"/>
+        <text x="520" y="445" text-anchor="middle" font-size="12" class="t-accent" font-weight="700">② 検証: 懸念点はある？</text>
+        <text x="435" y="474" font-size="12">なし → <tspan class="t-red" font-weight="700">差し戻し</tspan> ／ あり → <tspan class="t-amber" font-weight="700">確認待ち</tspan></text>
+        <!-- outcomes -->
+        <line x1="622" y1="150" x2="668" y2="150" class="arrow" marker-end="url(#b1)"/>
+        <line x1="622" y1="285" x2="668" y2="285" class="arrow" marker-end="url(#b1)"/>
+        <line x1="622" y1="440" x2="668" y2="440" class="arrow" marker-end="url(#b1)"/>
+        <line x1="622" y1="55" x2="668" y2="55" class="arrow" marker-end="url(#b1)"/>
+        <rect x="670" y="25" width="170" height="60" rx="10" class="box-green"/>
+        <text x="755" y="52" text-anchor="middle" font-weight="700" font-size="13" class="t-green">実行</text>
+        <text x="755" y="72" text-anchor="middle" font-size="11" class="muted">world.py が変わる</text>
+        <rect x="670" y="110" width="170" height="80" rx="10" class="box-amber"/>
+        <text x="755" y="142" text-anchor="middle" font-weight="700" font-size="13" class="t-amber">下書き（確認待ち）</text>
+        <text x="755" y="164" text-anchor="middle" font-size="11" class="muted">人が承認したら実行</text>
+        <rect x="670" y="245" width="170" height="80" rx="10" class="box-red"/>
+        <text x="755" y="277" text-anchor="middle" font-weight="700" font-size="13" class="t-red">ブロック</text>
+        <text x="755" y="299" text-anchor="middle" font-size="11" class="muted">送らずに上長へ回す</text>
+        <rect x="670" y="400" width="170" height="80" rx="10" class="box-red"/>
+        <text x="755" y="432" text-anchor="middle" font-weight="700" font-size="13" class="t-red">差し戻し</text>
+        <text x="755" y="454" text-anchor="middle" font-size="11" class="muted">理由つきで書き直させる</text>
+        <!-- return -->
+        <text x="755" y="510" text-anchor="middle" font-size="12" class="muted">どの結果も tool_result としてモデルに返る</text>
+        <text x="85" y="330" text-anchor="middle" font-size="12" class="muted">finish を呼ぶと</text>
+        <text x="85" y="348" text-anchor="middle" font-size="12" class="t-accent" font-weight="700">③ 終了時の検証</text>
+        <text x="85" y="366" text-anchor="middle" font-size="11" class="muted">最終面接すべてに</text>
+        <text x="85" y="382" text-anchor="middle" font-size="11" class="muted">申し送りがある？</text>
+        <text x="85" y="400" text-anchor="middle" font-size="11" class="muted">なければ差し戻し</text>
+      </svg>
+    </div>
+    <p class="note">ハーネスOFFのときは、読み取り以外も含めて全部「実行」に直行する（<code>policy</code> が <code>"allow", "ハーネスOFF: チェックなしで実行"</code> を返す）。</p>
+  </section>
+
+  <!-- 3. 部品 -->
+  <section>
+    <h2>ハーネスの部品</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>部品</th><th>何をするか</th><th>どこにあるか</th></tr></thead>
+        <tbody>
+          <tr><td><b>エージェントループ</b></td><td>モデルを呼ぶ → tool_use を1つずつ処理 → tool_result を返す、を finish まで最大30回。黙ったら「続けて」と促す。</td><td class="where">harness.py: Session.process</td></tr>
+          <tr><td><b>権限レイヤー</b></td><td>全ツール呼び出しを 許可 / 自動 / 確認待ち / ブロック / 差し戻し に振り分ける。判断と理由は必ず画面に出す。</td><td class="where">harness.py: Session.policy</td></tr>
+          <tr><td><b>ガード</b></td><td>LINEを送る前に、学生の最新メッセージに辞退の兆候があるかを別のモデル呼び出しで判定。「夜分のお詫び」「事務的な質問」などは兆候ではない、と例示。モデル出力が壊れたらキーワード判定に落とす。</td><td class="where">harness.py: guard_check<br>GUARD_SYSTEM / RISK_WORDS</td></tr>
+          <tr><td><b>検証</b></td><td>申し送りに面接官が知るべき懸念点（他社の選考、勤務地、転勤）が書かれているかを確認し、なければ差し戻す。finish 時に、最終面接すべてに申し送りがあるかも確認。</td><td class="where">harness.py: Session.policy / process<br>world.py: MUST_MENTION</td></tr>
+          <tr><td><b>学習</b></td><td>人が承認した返信について、学生メッセージの種類を固定4分類（服装・持ち物 / 日時・集合場所 / 書類 / その他）で判定し、ルールとして覚える。次回、同じ種類でガードを通ったものは自動で送る。ガードは常にルールより先。</td><td class="where">harness.py: LearnSession<br>classify / CATEGORIES</td></tr>
+          <tr><td><b>可視化</b></td><td>すべての動きを emit でイベント化し、SSE で画面へ流す。</td><td class="where">harness.py: self.emit<br>server.py: /api/stream</td></tr>
+          <tr><td><b>ステップ実行</b></td><td>2か所で止まる: ① モデルに次の行動を聞く前、② ハーネスが判断した後・実行する前。読み取りは止めない設定がある。</td><td class="where">harness.py: self.gate<br>server.py: new_session.gate</td></tr>
+          <tr><td><b>日英切り替え</b></td><td>シナリオ、エージェントへの指示、判断理由、ガードの指示文まで lang で切り替える。</td><td class="where">harness.py: S / LS<br>world.py: *_EVENTS など</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">emit するイベント: start / arrive / model / call / result / guard / verify / bucket / incident / pause / resume / idle / approved / classify / learned / error（バッチ実行では end も）</p>
+  </section>
+
+  <!-- 4. OFF / ON -->
+  <section>
+    <h2>ハーネスOFFとONの違い</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>場面</th><th>ハーネスOFF</th><th>ハーネスON</th></tr></thead>
+        <tbody>
+          <tr><td>承諾書を受けたステータス変更</td><td><span class="pill p-gray">そのまま実行</span></td><td><span class="pill p-green">自動</span> 承諾書の返送を確認済み</td></tr>
+          <tr><td>辞退の兆候がある学生へのLINE</td><td><span class="pill p-red">事故</span> 確認なしで「ようこそ」を送信</td><td><span class="pill p-red">ブロック</span> ガードが止めて上長へ</td></tr>
+          <tr><td>事務的な質問への自由文の返信</td><td><span class="pill p-gray">そのまま送信</span></td><td><span class="pill p-amber">確認待ち</span> 承認で送信（学習シーンでは次から自動）</td></tr>
+          <tr><td>幹部への申し送り</td><td><span class="pill p-red">確認なしで送信</span></td><td><span class="pill p-accent">検証</span> 懸念点を確認 → <span class="pill p-amber">確認待ち</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid2">
+      <div class="card ok">
+        <h3>確認できたこと</h3>
+        <ul>
+          <li>OFF: 高橋さんに確認なしで送信 → 事故。申し送り3件が確認なしで幹部へ</li>
+          <li>ON: 事故 0件、申し送りの検証 3/3（日本語・英語とも）</li>
+          <li>ガードの判定 24回（4メッセージ × 3回 × 日英）がすべて期待どおり</li>
+          <li>学習シーンの種類判定 14件がすべて期待どおり</li>
+        </ul>
+      </div>
+      <div class="card todo">
+        <h3>まだ確認していないこと</h3>
+        <ul>
+          <li>学習シーンを画面で通しで流すこと</li>
+          <li>承認ボタンからの送信とルール学習</li>
+          <li>ステップ実行を画面で見ること</li>
+          <li>差し戻し（懸念点の抜け）が実際に起きる場面。エージェントが毎回懸念点を書くため、まだ一度も起きていない</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. ユースケース -->
+  <section>
+    <h2>ユースケースとの対応</h2>
+    <div class="grid2">
+      <div class="card"><h3>1. 日々の連絡を片付ける</h3><p><span class="pill p-accent">権限</span> 安全なものは自動、自由文は人が確認。</p></div>
+      <div class="card"><h3>2. 辞退の兆候を見逃さない</h3><p><span class="pill p-accent">ガード</span> 送る前に兆候を確認し、上長へ。</p></div>
+      <div class="card"><h3>3. 最終面接の申し送り</h3><p><span class="pill p-accent">検証</span> 懸念点の抜けと送り漏れを差し戻す。</p></div>
+      <div class="card"><h3>学習シーン（デモの本命）</h3><p><span class="pill p-accent">学習</span> 初日は事務的な質問への返信を人が承認 → 1週間後は同じ種類を自動で送る。辞退の兆候は1週間後も止め続ける。</p></div>
+    </div>
+  </section>
+
+  <!-- 6. ファイル -->
+  <section>
+    <h2>ファイル構成と起動</h2>
+<pre><span class="cmt"># ~/Projects/harness-night/</span>
+harness.py      <span class="cmt"># エージェントループとハーネス（Session / LearnSession / guard_check / classify）</span>
+world.py        <span class="cmt"># 合成データの世界（候補者・届く連絡・明日の予定・懸念点）とツールの実処理</span>
+server.py       <span class="cmt"># セッション、SSE、ステップ実行の gate、承認</span>
+ui.html         <span class="cmt"># 日常業務シミュレーター（3ユースケース）</span>
+scene.html      <span class="cmt"># 学習シーン（初日 / 1週間後）※実装中</span>
+try_run.py      <span class="cmt"># 朝まとめて処理するモードをCLIで試す</span>
+try_live.py     <span class="cmt"># ボタンの代わりにAPIで連絡を送って試す</span>
+DEMO_SCRIPT.md  <span class="cmt"># デモの原稿</span>
+.env            <span class="cmt"># AIAND_API_KEY（権限600）</span>
+
+<span class="cmt"># 起動</span>
+.venv/bin/python server.py
+<span class="cmt"># → http://localhost:8765        日常業務シミュレーター</span>
+<span class="cmt"># → http://localhost:8765/scene  学習シーン（#en で英語）</span></pre>
+  </section>
+</div>

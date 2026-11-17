@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harness Demo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* デモ専用ページ。本体（scene.html）を iframe で表示し、上の帯の「次へ」でボタン操作を代わりに行う */
+:root { --fg: #1d2330; --muted: #6b7384; --accent: #7a4fd0; --bg: #f5f6f8; --red: #c62f2f; --green: #17845a; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; background: var(--bg); color: var(--fg); font-family: "Noto Sans JP", system-ui, sans-serif; }
+#bar { background: var(--fg); color: #fff; padding: 14px 22px; display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; }
+#count { font-weight: 700; font-size: 14px; background: #fff; color: var(--fg); border-radius: 8px; padding: 4px 12px; white-space: nowrap; }
+#title { font-size: 22px; font-weight: 700; line-height: 1.35; }
+#say { font-size: 15px; opacity: .85; margin-top: 2px; line-height: 1.55; }
+#say b { color: #ffd479; }
+.ctrl { display: flex; gap: 8px; align-items: center; }
+.ctrl button { border: 0; border-radius: 10px; padding: 12px 22px; font: inherit; font-weight: 700; cursor: pointer; }
+#next { background: #fff; color: var(--fg); font-size: 17px; min-width: 150px; }
+#next:disabled { opacity: .45; cursor: default; }
+#restart, #lang { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.4) !important; font-size: 13px; padding: 8px 12px !important; }
+#busy { font-size: 13px; color: #ffd479; min-height: 18px; }
+#progress { height: 4px; background: rgba(255,255,255,.15); grid-column: 1 / -1; border-radius: 2px; overflow: hidden; }
+#progress i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+iframe { flex: 1; border: 0; width: 100%; background: #fff; }
+@media (max-width: 800px) { #bar { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="bar">
+  <div id="count">0 / 0</div>
+  <div><div id="title"></div><div id="say"></div><div id="busy"></div></div>
+  <div class="ctrl">
+    <button id="lang">日本語</button>
+    <button id="restart">Restart</button>
+    <button id="next">Start ▶</button>
+  </div>
+  <div id="progress"><i id="bar-fill" style="width:0"></i></div>
+</div>
+<iframe id="app"></iframe>
+
+<script>
+let lang = location.hash === "#ja" ? "ja" : "en";
+const $ = (id) => document.getElementById(id);
+const doc = () => $("app").contentDocument;
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// ---------- 本体の画面を操作する小道具（本体のコードには触れない）
+const click = (sel) => { const el = doc().querySelector(sel); if (el) el.click(); return !!el; };
+async function waitFor(fn, ms = 20000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { if (fn()) return true; } catch (e) {} await sleep(200); } return false; }
+async function newDayReady() { await sleep(400); await waitFor(() => doc().querySelectorAll(".ebtn").length > 0); await sleep(600); }
+async function sendMsg(index) {
+  const before = doc().querySelectorAll(".sep").length;
+  doc().querySelectorAll(".ebtn")[index].click();
+  await waitFor(() => doc().querySelectorAll(".sep").length > before, 8000);
+  await waitFor(() => doc().getElementById("working").hidden, 90000);
+  await sleep(300);
+}
+async function approveAll() {
+  const btns = [...doc().querySelectorAll("#pending .approve:not([disabled])")];
+  for (const b of btns) { b.click(); await sleep(500); }
+  await waitFor(() => doc().querySelectorAll(".ev.learn").length >= btns.length, 8000);
+}
+const ensure = async (id) => { if (!doc().getElementById(id).classList.contains("sel")) { click("#" + id); await newDayReady(); } };
+
+// ---------- 台本
+const STEPS = {
+  en: [
+    { title: "Same cheap model. The only thing that changes is the harness.",
+      say: "A recruiter's day is a stream of LINE messages from students. Let's hand them to an AI agent — <b>harness OFF</b> first.",
+      run: async () => { click("#resetmem"); await newDayReady(); await ensure("btn-off"); await ensure("btn-d1"); } },
+    { title: "Harness OFF: Ren asks about dress code… and mentions his parents.",
+      say: "A routine question, so the agent just replies. But read the rest: <b>his parents want him to work back home.</b>",
+      run: async () => { await sendMsg(3); } },
+    { title: "Incident. A cheerful reply went out with no human check.",
+      say: "That's the message that makes a hesitating student feel unheard. Now the <b>same model, same message, harness ON.</b>",
+      run: async () => { await ensure("btn-on"); } },
+    { title: "Harness ON: a guard reads the student's message before anything is sent.",
+      say: "<b>Withdrawal risk → blocked → escalated to the manager.</b> The reply never leaves the building.",
+      run: async () => { await sendMsg(3); } },
+    { title: "Day 1: everyday questions. The agent drafts replies.",
+      say: "No warning signs, but it's the first time the harness sees these kinds of questions, so <b>a human reviews them.</b>",
+      run: async () => { await sendMsg(0); await sendMsg(1); } },
+    { title: "The recruiter approves. The harness learns a rule from each approval.",
+      say: "Approving teaches it: <b>“replies about dress code” and “replies about time and place” can go out on their own next time.</b>",
+      run: async () => { await approveAll(); } },
+    { title: "One week later: the same kinds of questions arrive.",
+      say: "Different students, different wording. <b>Sent automatically</b> — and the reason shows which rule the recruiter approved.",
+      run: async () => { await ensure("btn-d7"); await sendMsg(0); await sendMsg(1); } },
+    { title: "But a hesitating student still goes to a human.",
+      say: "Hina asks where the social is <b>and</b> says she's waiting on another company. Learned rules never override the guard.",
+      run: async () => { await sendMsg(2); } },
+    { title: "Day 1 vs. one week later — same model the whole time.",
+      say: "Human review went down, automatic replies went up, and risky messages were stopped every time. <b>The harness decides what the agent may do alone — and it grows with your approvals.</b>",
+      run: async () => {} },
+  ],
+  ja: [
+    { title: "モデルは同じ安いモデル。変えるのはハーネスだけ。",
+      say: "採用担当の1日は、学生から次々に届くLINEへの返信です。まずは<b>ハーネスOFF</b>でAIに任せてみます。",
+      run: async () => { click("#resetmem"); await newDayReady(); await ensure("btn-off"); await ensure("btn-d1"); } },
+    { title: "ハーネスOFF：高橋さんから服装の質問。そして親のこと。",
+      say: "事務的な質問なので、エージェントはそのまま返信します。でも後半を読むと、<b>親が地元就職を望んでいます。</b>",
+      run: async () => { await sendMsg(3); } },
+    { title: "事故。人の確認なしで、明るい返信が送られました。",
+      say: "迷っている学生が「話を聞いてもらえていない」と感じる返信です。次は<b>同じモデル、同じメッセージで、ハーネスON。</b>",
+      run: async () => { await ensure("btn-on"); } },
+    { title: "ハーネスON：送る前に、ガードが学生のメッセージを読みます。",
+      say: "<b>辞退の兆候 → 送信ブロック → 上長へ。</b>返信は外に出ません。",
+      run: async () => { await sendMsg(3); } },
+    { title: "初日：日常の質問。エージェントが返信を下書きします。",
+      say: "兆候はないものの、ハーネスにとって初めての種類の質問なので、<b>人が確認します。</b>",
+      run: async () => { await sendMsg(0); await sendMsg(1); } },
+    { title: "担当者が承認。ハーネスは承認からルールを覚えます。",
+      say: "<b>「服装・持ち物の質問への返信」「日時・集合場所の質問への返信」は、次から自動で送ってよい</b>と学習します。",
+      run: async () => { await approveAll(); } },
+    { title: "1週間後：同じ種類の質問が届きます。",
+      say: "別の学生、別の言い回し。<b>自動で送信</b>され、理由にはどの承認から覚えたルールかが表示されます。",
+      run: async () => { await ensure("btn-d7"); await sendMsg(0); await sendMsg(1); } },
+    { title: "それでも、迷っている学生は人へ。",
+      say: "小林さんは集合場所を聞きつつ、<b>他社の結果待ち</b>だと書いています。覚えたルールがガードより優先されることはありません。",
+      run: async () => { await sendMsg(2); } },
+    { title: "初日と1週間後の比較。モデルは最後まで同じです。",
+      say: "人の確認は減り、自動の返信は増え、危ないメッセージは毎回止まりました。<b>エージェントに何を任せるかはハーネスが決め、承認とともに育ちます。</b>",
+      run: async () => {} },
+  ],
+};
+
+let i = -1, busy = false;
+function show() {
+  const S = STEPS[lang], s = S[Math.max(i, 0)];
+  $("count").textContent = `${Math.max(i + 1, 0)} / ${S.length}`;
+  $("title").textContent = i < 0 ? (lang === "en" ? "Press Start when you're ready" : "準備ができたら Start") : s.title;
+  $("say").innerHTML = i < 0 ? "" : s.say;
+  $("bar-fill").style.width = `${((i + 1) / S.length) * 100}%`;
+  $("next").textContent = i < 0 ? "Start ▶" : i >= S.length - 1 ? (lang === "en" ? "Done" : "終了") : (lang === "en" ? "Next ▶" : "次へ ▶");
+  $("next").disabled = busy || i >= S.length - 1;
+  $("busy").textContent = busy ? (lang === "en" ? "Agent is working…" : "エージェントが対応中…") : "";
+  $("lang").textContent = lang === "en" ? "日本語" : "English";
+  $("restart").textContent = lang === "en" ? "Restart" : "最初から";
+}
+async function next() {
+  if (busy || i >= STEPS[lang].length - 1) return;
+  i++; busy = true; show();
+  try { await STEPS[lang][i].run(); } catch (e) { console.error(e); }
+  busy = false; show();
+}
+function load() {
+  i = -1; busy = false;
+  document.documentElement.lang = lang;
+  $("app").src = `/scene#${lang}`;
+  $("app").onload = () => show();
+  show();
+}
+$("next").onclick = next;
+$("restart").onclick = load;
+$("lang").onclick = () => { lang = lang === "en" ? "ja" : "en"; history.replaceState(null, "", "#" + lang); load(); };
+document.addEventListener("keydown", (e) => { if (e.code === "Space" || e.code === "ArrowRight") { e.preventDefault(); next(); } });
+$("app").addEventListener("load", () => { $("app").contentDocument.addEventListener("keydown", (e) => { if (e.code === "Space" || e.code === "ArrowRight") { e.preventDefault(); next(); } }); });
+load();
+</script>
+</body>
+</html>
