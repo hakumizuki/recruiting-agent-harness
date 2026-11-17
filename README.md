@@ -48,4 +48,3 @@ Models are served by [ai&](https://aiand.com) through its Anthropic-compatible A
 | `ui.html` / `scene.html` / `demo.html` | Day simulator / learning scene / guided demo |
 | `try_*.py` | Run scenarios from the command line |
 | `eval.py`, `agents.py`, `gen_dataset.py`, `llm.py` | Early classification eval (reply needed / not needed) |
-| `DEMO_SCRIPT.md` | 3-minute demo script |
