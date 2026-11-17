@@ -23,6 +23,23 @@ All data is synthetic. No real people or companies.
 
 See `harness-overview.html` for diagrams.
 
+## Learning at scale (1M+ messages)
+
+The demo learns a rule from a single approval. At scale that breaks: one mis-click or one outdated fact spreads to thousands of messages. `learning.py` keeps learning correct with:
+
+1. **Promote by statistics** — a rule turns automatic only when the Wilson lower bound of its recent approval rate is ≥ 0.95 (n ≥ 30)
+2. **Demote by statistics** — automatic replies are spot-checked (2%); if the Wilson upper bound drops below 0.90, the rule is suspended
+3. **Sliding window** — only the last 400 decisions count, so rules follow changes
+4. **Knowledge versions** — a rule depends on the version of the info it uses (e.g. event venue); a new version sends it back to learning
+
+The guard (withdrawal signs) always runs before any learned rule.
+
+```bash
+.venv/bin/python scale_sim.py   # 1,000,000 synthetic messages, no LLM calls, a few seconds
+```
+
+Synthetic world: different approval rates per message type, 1% mis-clicks, and the event venue changes at message 600k (the agent keeps answering with the old info).
+
 ## Run
 
 ```bash
@@ -46,5 +63,6 @@ Models are served by [ai&](https://aiand.com) through its Anthropic-compatible A
 | `world.py` | Synthetic world: candidates, incoming messages, tool side effects |
 | `server.py` | HTTP + SSE server, sessions, step-by-step gate |
 | `ui.html` / `scene.html` / `demo.html` | Day simulator / learning scene / guided demo |
+| `learning.py` / `scale_sim.py` | Rule book for learning at scale / 1M-message simulation |
 | `try_*.py` | Run scenarios from the command line |
 | `eval.py`, `agents.py`, `gen_dataset.py`, `llm.py` | Early classification eval (reply needed / not needed) |
