@@ -78,8 +78,10 @@ class GraphSearch:
                 UNWIND q AS qi
                 MATCH (c:Concept {name: qi.name})<-[:ABOUT]-(m:Message)
                 WITH m, qtotal, sum(qi.idf) AS hit, collect(qi.name) AS shared
-                RETURN m.id AS id, m.text AS text, m.label AS label, shared, hit / qtotal AS score
-                ORDER BY score DESC LIMIT $k""", qc=qc, k=k).data()
+                WITH m, shared, hit / qtotal AS score, COUNT { (m)-[:ABOUT]->() } AS dsize
+                // 同点なら、余計な話題（問い合わせにない概念）が少ないメッセージを上にする
+                RETURN m.id AS id, m.text AS text, m.label AS label, shared, score, dsize
+                ORDER BY score DESC, dsize ASC LIMIT $k""", qc=qc, k=k).data()
         return qc, rows
 
 
